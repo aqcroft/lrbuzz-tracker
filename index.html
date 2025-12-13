@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,321 +8,180 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { margin: 0; padding: 0; }
-    </style>
 </head>
 <body>
     <div id="root"></div>
-
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
-
         const VENUES = ['Hinckley', 'Leicester', 'Loughborough', 'Lutterworth', 'Market Harborough'];
         const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         const PIN = '1232';
-        const STORAGE_KEY = 'lrbuzz-events';
 
-        // Icons as SVG components
-        const ChevronLeft = () => (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-        );
-
-        const Calendar = () => (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-        );
-
-        const Download = () => (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-        );
-
-        const LRBuzzTracker = () => {
+        function App() {
             const [screen, setScreen] = useState('venue');
-            const [selectedVenue, setSelectedVenue] = useState('');
-            const [selectedMonth, setSelectedMonth] = useState('');
-            const [eventDate, setEventDate] = useState('');
-            const [pinInput, setPinInput] = useState('');
+            const [venue, setVenue] = useState('');
+            const [month, setMonth] = useState('');
+            const [date, setDate] = useState('');
+            const [pin, setPin] = useState('');
             const [pinMode, setPinMode] = useState('');
             const [events, setEvents] = useState({});
             const [scores, setScores] = useState({ blue: 0, red: 0, green: 0 });
             const [presses, setPresses] = useState([]);
             const [inRoom, setInRoom] = useState('');
-            const [hostingTeam, setHostingTeam] = useState('');
+            const [team, setTeam] = useState('');
             const [notes, setNotes] = useState('');
-            const [showWarning, setShowWarning] = useState(null);
-            const [editingEvent, setEditingEvent] = useState(null);
-            const keepAliveRef = useRef(null);
+            const [warn, setWarn] = useState(null);
+            const [edit, setEdit] = useState(null);
 
-            // Load from localStorage on mount
             useEffect(() => {
                 try {
-                    const stored = localStorage.getItem(STORAGE_KEY);
-                    if (stored) {
-                        setEvents(JSON.parse(stored));
-                    }
-                } catch (err) {
-                    console.error('Failed to load data:', err);
-                }
+                    const data = localStorage.getItem('lrbuzz');
+                    if (data) setEvents(JSON.parse(data));
+                } catch (e) {}
             }, []);
 
-            // Save to localStorage whenever events change
-            const saveEvents = (newEvents) => {
+            const save = (e) => {
                 try {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(newEvents));
-                    setEvents(newEvents);
-                } catch (err) {
-                    console.error('Failed to save:', err);
-                    alert('Error saving data: ' + err.message);
-                }
+                    localStorage.setItem('lrbuzz', JSON.stringify(e));
+                    setEvents(e);
+                } catch (err) {}
             };
 
-            // Keep screen awake during tracking
-            useEffect(() => {
-                if (screen === 'tracking') {
-                    keepAliveRef.current = setInterval(() => {
-                        document.body.style.transform = 'translateZ(0)';
-                    }, 30000);
-                } else if (keepAliveRef.current) {
-                    clearInterval(keepAliveRef.current);
-                }
-                return () => {
-                    if (keepAliveRef.current) clearInterval(keepAliveRef.current);
-                };
-            }, [screen]);
+            const key = (v, m) => v + '-' + m;
 
-            const getEventKey = (venue, month) => venue + '-' + month;
-
-            const handleVenueSelect = (venue) => {
-                setSelectedVenue(venue);
-                setScreen('month');
+            const block = () => {
+                const n = new Date();
+                const t = n.getHours() * 100 + n.getMinutes();
+                if (t >= 945 && t <= 1045) return 'buzzing-in';
+                if (t >= 1115 && t <= 1215) return 'buzzing-out';
+                return 'outside-hours';
             };
 
-            const handleMonthSelect = (month) => {
-                const key = getEventKey(selectedVenue, month);
-                const existing = events[key];
-                const currentMonthIndex = new Date().getMonth();
-                const selectedMonthIndex = MONTHS.indexOf(month);
+            const pickVenue = (v) => { setVenue(v); setScreen('month'); };
 
-                if (selectedMonthIndex > currentMonthIndex) {
-                    setShowWarning({
-                        type: 'future',
-                        message: 'You are selecting ' + month + ' which is in the future. Are you sure?',
-                        onConfirm: () => proceedWithMonth(month, existing)
-                    });
+            const pickMonth = (m) => {
+                const k = key(venue, m);
+                const ex = events[k];
+                const curr = new Date().getMonth();
+                const sel = MONTHS.indexOf(m);
+                if (sel > curr) {
+                    setWarn({ msg: 'Selecting ' + m + ' (future). Continue?', ok: () => go(m, ex) });
                     return;
                 }
-
-                if (existing && existing.completed) {
-                    setShowWarning({
-                        type: 'overwrite',
-                        message: 'Data already exists for ' + month + ' at ' + selectedVenue + '. Do you want to overwrite it?',
-                        onConfirm: () => proceedWithMonth(month, existing)
-                    });
+                if (ex && ex.done) {
+                    setWarn({ msg: 'Data exists for ' + m + '. Overwrite?', ok: () => go(m, ex) });
                     return;
                 }
-
-                proceedWithMonth(month, existing);
+                go(m, ex);
             };
 
-            const proceedWithMonth = (month, existing) => {
-                setSelectedMonth(month);
-                setShowWarning(null);
-                
-                if (existing && !existing.completed) {
-                    setScores(existing.scores);
-                    setPresses(existing.presses || []);
-                    setEventDate(existing.date);
-                    setNotes(existing.notes || '');
+            const go = (m, ex) => {
+                setMonth(m);
+                setWarn(null);
+                if (ex && !ex.done) {
+                    setScores(ex.scores);
+                    setPresses(ex.presses || []);
+                    setDate(ex.date);
+                    setNotes(ex.notes || '');
                 } else {
-                    const today = new Date().toISOString().split('T')[0];
-                    setEventDate(today);
+                    setDate(new Date().toISOString().split('T')[0]);
                     setScores({ blue: 0, red: 0, green: 0 });
                     setPresses([]);
                     setNotes('');
                 }
                 setPinMode('start');
-                setPinInput('');
-                setScreen('pin-entry');
+                setPin('');
+                setScreen('pin');
             };
 
-            const handleFinishTracking = () => {
-                setPinMode('finish');
-                setPinInput('');
-                setScreen('pin-entry');
-            };
-
-            const handlePinSubmit = () => {
-                if (pinInput === PIN) {
-                    if (pinMode === 'start') {
-                        setScreen('tracking');
-                    } else {
-                        setScreen('finish-prompt');
-                    }
-                    setPinInput('');
+            const checkPin = () => {
+                if (pin === PIN) {
+                    setScreen(pinMode === 'start' ? 'track' : 'finish');
+                    setPin('');
                 } else {
-                    alert('Incorrect PIN');
-                    setPinInput('');
+                    alert('Wrong PIN');
+                    setPin('');
                 }
             };
 
-            const getTimeBlock = () => {
-                const now = new Date();
-                const hours = now.getHours();
-                const minutes = now.getMinutes();
-                const time = hours * 100 + minutes;
-
-                if (time >= 945 && time <= 1045) return 'buzzing-in';
-                if (time >= 1115 && time <= 1215) return 'buzzing-out';
-                return 'outside-hours';
+            const press = (c) => {
+                const s = { ...scores };
+                s[c]++;
+                const p = { color: c, time: new Date().toISOString(), block: block() };
+                const ps = [...presses, p];
+                setScores(s);
+                setPresses(ps);
+                const k = key(venue, month);
+                const e = { ...events };
+                e[k] = { venue, month, date, scores: s, presses: ps, notes, inRoom: '', team: '', done: false };
+                save(e);
             };
 
-            const handleScorePress = (color) => {
-                const newScores = { ...scores };
-                newScores[color] = scores[color] + 1;
-                const press = {
-                    color: color,
-                    time: new Date().toISOString(),
-                    block: getTimeBlock()
-                };
-                const newPresses = [...presses, press];
-                
-                setScores(newScores);
-                setPresses(newPresses);
-
-                const key = getEventKey(selectedVenue, selectedMonth);
-                const updatedEvents = { ...events };
-                updatedEvents[key] = {
-                    venue: selectedVenue,
-                    month: selectedMonth,
-                    date: eventDate,
-                    scores: newScores,
-                    presses: newPresses,
-                    notes: notes,
-                    inRoom: '',
-                    hostingTeam: '',
-                    completed: false
-                };
-                saveEvents(updatedEvents);
-            };
-
-            const handleSaveEvent = (skipPrompt) => {
-                const key = getEventKey(selectedVenue, selectedMonth);
-                const eventData = {
-                    venue: selectedVenue,
-                    month: selectedMonth,
-                    date: eventDate,
-                    scores: scores,
-                    presses: presses,
-                    inRoom: skipPrompt ? '' : inRoom,
-                    hostingTeam: skipPrompt ? '' : hostingTeam,
-                    notes: notes,
-                    completed: true
-                };
-
-                const updatedEvents = { ...events };
-                updatedEvents[key] = eventData;
-                saveEvents(updatedEvents);
-                
-                setSelectedVenue('');
-                setSelectedMonth('');
+            const finish = (skip) => {
+                const k = key(venue, month);
+                const e = { ...events };
+                e[k] = { venue, month, date, scores, presses, inRoom: skip ? '' : inRoom, team: skip ? '' : team, notes, done: true };
+                save(e);
+                setVenue('');
+                setMonth('');
                 setScores({ blue: 0, red: 0, green: 0 });
                 setPresses([]);
                 setInRoom('');
-                setHostingTeam('');
+                setTeam('');
                 setNotes('');
                 setScreen('venue');
             };
 
-            const exportCSV = () => {
-                let csv = 'Venue,Month,Date,3 New Met,One 2 Ones,Brought Some1,In Room,Hosting Team,Buzzing In (9:45-10:45),Buzzing Out (11:15-12:15),Notes\n';
-                
-                Object.values(events).forEach(event => {
-                    if (event.completed) {
-                        const buzzingIn = event.presses ? event.presses.filter(p => p.block === 'buzzing-in').length : 0;
-                        const buzzingOut = event.presses ? event.presses.filter(p => p.block === 'buzzing-out').length : 0;
-                        
-                        csv += event.venue + ',"' + event.month + '",' + event.date + ',' + event.scores.blue + ',' + event.scores.red + ',' + event.scores.green + ',' + (event.inRoom || '') + ',' + (event.hostingTeam || '') + ',' + buzzingIn + ',' + buzzingOut + ',"' + (event.notes || '') + '"\n';
+            const csv = () => {
+                let c = 'Venue,Month,Date,3 New Met,One 2 Ones,Brought Some1,In Room,Team,Buzzing In,Buzzing Out,Notes\n';
+                Object.values(events).forEach(ev => {
+                    if (ev.done) {
+                        const bi = ev.presses ? ev.presses.filter(p => p.block === 'buzzing-in').length : 0;
+                        const bo = ev.presses ? ev.presses.filter(p => p.block === 'buzzing-out').length : 0;
+                        c += ev.venue + ',"' + ev.month + '",' + ev.date + ',' + ev.scores.blue + ',' + ev.scores.red + ',' + ev.scores.green + ',' + (ev.inRoom || '') + ',' + (ev.team || '') + ',' + bi + ',' + bo + ',"' + (ev.notes || '') + '"\n';
                     }
                 });
-
                 try {
-                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                    const url = URL.createObjectURL(blob);
+                    const b = new Blob([c], { type: 'text/csv' });
+                    const u = URL.createObjectURL(b);
                     const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = 'lrbuzz-data-' + new Date().toISOString().split('T')[0] + '.csv';
-                    document.body.appendChild(a);
+                    a.href = u;
+                    a.download = 'lrbuzz-' + new Date().toISOString().split('T')[0] + '.csv';
                     a.click();
-                    setTimeout(() => {
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                    }, 100);
-                } catch (err) {
-                    alert('CSV Content:\n\n' + csv);
-                }
+                } catch (e) { alert(c); }
             };
 
-            const handleEditEvent = (key) => {
-                const event = events[key];
-                setEditingEvent(key);
-                setInRoom(event.inRoom || '');
-                setHostingTeam(event.hostingTeam || '');
-                setNotes(event.notes || '');
+            const editEv = (k) => {
+                const ev = events[k];
+                setEdit(k);
+                setInRoom(ev.inRoom || '');
+                setTeam(ev.team || '');
+                setNotes(ev.notes || '');
             };
 
-            const handleSaveEdit = () => {
-                const updatedEvents = { ...events };
-                updatedEvents[editingEvent] = {
-                    ...events[editingEvent],
-                    inRoom: inRoom,
-                    hostingTeam: hostingTeam,
-                    notes: notes
-                };
-                saveEvents(updatedEvents);
-                setEditingEvent(null);
+            const saveEdit = () => {
+                const e = { ...events };
+                e[edit] = { ...events[edit], inRoom, team, notes };
+                save(e);
+                setEdit(null);
                 setInRoom('');
-                setHostingTeam('');
+                setTeam('');
                 setNotes('');
             };
 
-            if (showWarning) {
+            if (warn) {
                 return (
                     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
                         <div className="bg-white rounded-lg p-8 max-w-md w-full">
-                            <h2 className="text-2xl font-bold mb-4 text-gray-900">Warning</h2>
-                            <p className="text-gray-700 mb-6">{showWarning.message}</p>
+                            <h2 className="text-2xl font-bold mb-4">Warning</h2>
+                            <p className="mb-6">{warn.msg}</p>
                             <div className="flex gap-4">
-                                <button onClick={() => setShowWarning(null)} className="flex-1 px-6 py-3 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400">
-                                    No, Go Back
-                                </button>
-                                <button onClick={showWarning.onConfirm} className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
-                                    Yes, Continue
-                                </button>
+                                <button onClick={() => setWarn(null)} className="flex-1 p-3 bg-gray-300 rounded-lg font-semibold">No</button>
+                                <button onClick={warn.ok} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-semibold">Yes</button>
                             </div>
                         </div>
                     </div>
                 );
-            }
-
-            return null;
-        };
-
-        ReactDOM.render(<LRBuzzTracker />, document.getElementById('root'));
-    </script>
-</body>
-</html>
             }
 
             if (screen === 'venue') {
@@ -332,16 +190,9 @@
                         <div className="max-w-4xl mx-auto">
                             <h1 className="text-4xl font-bold text-white mb-8 text-center">LR Buzz 321 Tracker</h1>
                             <div className="flex flex-col gap-4 mb-8">
-                                {VENUES.map(venue => (
-                                    <button key={venue} onClick={() => handleVenueSelect(venue)} className="w-full p-8 bg-blue-600 text-white rounded-lg text-2xl font-semibold hover:bg-blue-700 transition">
-                                        {venue}
-                                    </button>
-                                ))}
+                                {VENUES.map(v => <button key={v} onClick={() => pickVenue(v)} className="w-full p-8 bg-blue-600 text-white rounded-lg text-2xl font-semibold hover:bg-blue-700">{v}</button>)}
                             </div>
-                            <button onClick={() => setScreen('review')} className="w-full p-6 bg-green-600 text-white rounded-lg text-xl font-semibold hover:bg-green-700 transition flex items-center justify-center gap-2">
-                                <Calendar />
-                                Review Historical Data
-                            </button>
+                            <button onClick={() => setScreen('review')} className="w-full p-6 bg-green-600 text-white rounded-lg text-xl font-semibold hover:bg-green-700">Review Historical Data</button>
                         </div>
                     </div>
                 );
@@ -351,22 +202,14 @@
                 return (
                     <div className="min-h-screen bg-gray-900 p-8">
                         <div className="max-w-4xl mx-auto">
-                            <button onClick={() => setScreen('venue')} className="mb-6 flex items-center text-white hover:text-blue-400 transition">
-                                <ChevronLeft />
-                                Back to Venues
-                            </button>
-                            <h1 className="text-4xl font-bold text-white mb-4 text-center">{selectedVenue}</h1>
+                            <button onClick={() => setScreen('venue')} className="mb-6 text-white">← Back</button>
+                            <h1 className="text-4xl font-bold text-white mb-4 text-center">{venue}</h1>
                             <h2 className="text-2xl text-white mb-8 text-center">Select Month</h2>
                             <div className="grid grid-cols-3 gap-4">
-                                {MONTHS.map(month => {
-                                    const key = getEventKey(selectedVenue, month);
-                                    const hasData = events[key] && events[key].completed;
-                                    return (
-                                        <button key={month} onClick={() => handleMonthSelect(month)} className={'p-6 rounded-lg text-xl font-semibold transition ' + (hasData ? 'bg-yellow-600 text-white hover:bg-yellow-700' : 'bg-blue-600 text-white hover:bg-blue-700')}>
-                                            {month}
-                                            {hasData && <div className="text-sm mt-1">✓ Has Data</div>}
-                                        </button>
-                                    );
+                                {MONTHS.map(m => {
+                                    const k = key(venue, m);
+                                    const has = events[k] && events[k].done;
+                                    return <button key={m} onClick={() => pickMonth(m)} className={'p-6 rounded-lg text-xl font-semibold ' + (has ? 'bg-yellow-600 text-white' : 'bg-blue-600 text-white')}>{m}{has && <div className="text-sm mt-1">✓</div>}</button>;
                                 })}
                             </div>
                         </div>
@@ -374,104 +217,74 @@
                 );
             }
 
-            if (screen === 'pin-entry') {
+            if (screen === 'pin') {
                 return (
                     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
                         <div className="bg-white rounded-lg p-8 max-w-md w-full">
-                            <h2 className="text-3xl font-bold mb-6 text-gray-900 text-center">
-                                {pinMode === 'start' ? 'Enter PIN to Start' : 'Enter PIN to Finish'}
-                            </h2>
-                            <input
-                                type="password"
-                                value={pinInput}
-                                onChange={(e) => setPinInput(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && handlePinSubmit()}
-                                className="w-full p-4 border-2 border-gray-300 rounded-lg text-2xl text-center mb-6"
-                                placeholder="****"
-                                maxLength="4"
-                                autoFocus
-                            />
+                            <h2 className="text-3xl font-bold mb-6 text-center">{pinMode === 'start' ? 'Enter PIN to Start' : 'Enter PIN to Finish'}</h2>
+                            <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && checkPin()} className="w-full p-4 border-2 rounded-lg text-2xl text-center mb-6" placeholder="****" maxLength="4" autoFocus />
                             <div className="flex gap-4">
-                                <button onClick={() => setScreen(pinMode === 'start' ? 'month' : 'tracking')} className="flex-1 p-4 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400">
-                                    Cancel
-                                </button>
-                                <button onClick={handlePinSubmit} className="flex-1 p-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
-                                    Submit
-                                </button>
+                                <button onClick={() => setScreen(pinMode === 'start' ? 'month' : 'track')} className="flex-1 p-4 bg-gray-300 rounded-lg font-semibold">Cancel</button>
+                                <button onClick={checkPin} className="flex-1 p-4 bg-blue-600 text-white rounded-lg font-semibold">Submit</button>
                             </div>
                         </div>
                     </div>
                 );
             }
 
-            if (screen === 'tracking') {
+            if (screen === 'track') {
                 return (
                     <div className="h-screen bg-gray-900 flex flex-col p-4">
                         <div className="text-center mb-4">
                             <h1 className="text-3xl font-bold text-white mb-2">#LRBuzz321 tracker: Flip once if you...</h1>
-                            <div className="text-xl text-gray-300">{selectedVenue} - {selectedMonth} {eventDate}</div>
+                            <div className="text-xl text-gray-300">{venue} - {month} {date}</div>
                         </div>
-                        
                         <div className="flex-1 flex gap-4">
-                            <button onClick={() => handleScorePress('blue')} className="flex-1 bg-blue-600 hover:bg-blue-700 rounded-lg flex flex-col items-center justify-center transition">
+                            <button onClick={() => press('blue')} className="flex-1 bg-blue-600 rounded-lg flex flex-col items-center justify-center">
                                 <div className="text-9xl font-bold text-white mb-4">{scores.blue}</div>
                                 <div className="text-2xl font-semibold text-white">3 new met</div>
                             </button>
-                            
-                            <button onClick={() => handleScorePress('red')} className="flex-1 bg-red-600 hover:bg-red-700 rounded-lg flex flex-col items-center justify-center transition">
+                            <button onClick={() => press('red')} className="flex-1 bg-red-600 rounded-lg flex flex-col items-center justify-center">
                                 <div className="text-9xl font-bold text-white mb-4">{scores.red}</div>
                                 <div className="text-2xl font-semibold text-white">one 2 one's</div>
                                 <div className="text-xl text-white">(set / sat)</div>
                             </button>
-                            
-                            <button onClick={() => handleScorePress('green')} className="flex-1 bg-green-600 hover:bg-green-700 rounded-lg flex flex-col items-center justify-center transition">
+                            <button onClick={() => press('green')} className="flex-1 bg-green-600 rounded-lg flex flex-col items-center justify-center">
                                 <div className="text-9xl font-bold text-white mb-4">{scores.green}</div>
                                 <div className="text-2xl font-semibold text-white">brought some1 along</div>
                             </button>
                         </div>
-
-                        <button onClick={handleFinishTracking} className="mt-4 px-8 py-3 bg-yellow-600 text-white rounded-lg font-semibold hover:bg-yellow-700 transition self-end">
-                            Finish Tracking
-                        </button>
+                        <button onClick={() => { setPinMode('finish'); setPin(''); setScreen('pin'); }} className="mt-4 px-8 py-3 bg-yellow-600 text-white rounded-lg font-semibold self-end">Finish</button>
                     </div>
                 );
             }
 
-            if (screen === 'finish-prompt') {
+            if (screen === 'finish') {
                 return (
                     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
                         <div className="bg-white rounded-lg p-8 max-w-md w-full">
-                            <h2 className="text-3xl font-bold mb-6 text-gray-900">Event Complete!</h2>
-                            
+                            <h2 className="text-3xl font-bold mb-6">Event Complete!</h2>
                             <div className="mb-6 p-4 bg-gray-100 rounded-lg">
                                 <div className="text-xl font-semibold mb-2">Final Scores:</div>
-                                <div className="text-lg">3 new met: {scores.blue}</div>
-                                <div className="text-lg">One 2 one's: {scores.red}</div>
-                                <div className="text-lg">Brought some1: {scores.green}</div>
+                                <div>3 new met: {scores.blue}</div>
+                                <div>One 2 one's: {scores.red}</div>
+                                <div>Brought some1: {scores.green}</div>
                             </div>
-
                             <div className="mb-4">
-                                <label className="block text-gray-700 font-semibold mb-2">In the Room</label>
-                                <input type="number" value={inRoom} onChange={(e) => setInRoom(e.target.value)} className="w-full p-3 border-2 border-gray-300 rounded-lg" placeholder="Total attendees" />
+                                <label className="block font-semibold mb-2">In the Room</label>
+                                <input type="number" value={inRoom} onChange={(e) => setInRoom(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
                             </div>
-
                             <div className="mb-4">
-                                <label className="block text-gray-700 font-semibold mb-2">Hosting Team</label>
-                                <input type="number" value={hostingTeam} onChange={(e) => setHostingTeam(e.target.value)} className="w-full p-3 border-2 border-gray-300 rounded-lg" placeholder="Number of hosts" />
+                                <label className="block font-semibold mb-2">Hosting Team</label>
+                                <input type="number" value={team} onChange={(e) => setTeam(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
                             </div>
-
                             <div className="mb-6">
-                                <label className="block text-gray-700 font-semibold mb-2">Notes (optional)</label>
-                                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 border-gray-300 rounded-lg" rows="3" placeholder="Any notes about this event..."></textarea>
+                                <label className="block font-semibold mb-2">Notes</label>
+                                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 rounded-lg" rows="3"></textarea>
                             </div>
-
                             <div className="flex gap-4">
-                                <button onClick={() => handleSaveEvent(true)} className="flex-1 p-4 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400">
-                                    Do This Later
-                                </button>
-                                <button onClick={() => handleSaveEvent(false)} className="flex-1 p-4 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700">
-                                    Save Event
-                                </button>
+                                <button onClick={() => finish(true)} className="flex-1 p-4 bg-gray-300 rounded-lg font-semibold">Later</button>
+                                <button onClick={() => finish(false)} className="flex-1 p-4 bg-green-600 text-white rounded-lg font-semibold">Save</button>
                             </div>
                         </div>
                     </div>
@@ -479,105 +292,77 @@
             }
 
             if (screen === 'review') {
-                const completedEvents = Object.entries(events)
-                    .filter(entry => entry[1].completed)
-                    .sort((a, b) => MONTHS.indexOf(a[1].month) - MONTHS.indexOf(b[1].month));
-
+                const done = Object.entries(events).filter(e => e[1].done).sort((a, b) => MONTHS.indexOf(a[1].month) - MONTHS.indexOf(b[1].month));
                 return (
                     <div className="min-h-screen bg-gray-900 p-8">
                         <div className="max-w-6xl mx-auto">
                             <div className="flex justify-between items-center mb-8">
-                                <button onClick={() => setScreen('venue')} className="flex items-center text-white hover:text-blue-400 transition">
-                                    <ChevronLeft />
-                                    Back to Venues
-                                </button>
+                                <button onClick={() => setScreen('venue')} className="text-white">← Back</button>
                                 <h1 className="text-4xl font-bold text-white">Historical Data</h1>
-                                <button onClick={exportCSV} className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition">
-                                    <Download />
-                                    Export CSV
-                                </button>
+                                <button onClick={csv} className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold">Export CSV</button>
                             </div>
-
-                            <div className="bg-white rounded-lg overflow-hidden">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead className="bg-gray-800 text-white">
-                                            <tr>
-                                                <th className="p-4 text-left">Venue</th>
-                                                <th className="p-4 text-left">Month</th>
-                                                <th className="p-4 text-left">Date</th>
-                                                <th className="p-4 text-center">3 New Met</th>
-                                                <th className="p-4 text-center">One 2 Ones</th>
-                                                <th className="p-4 text-center">Brought Some1</th>
-                                                <th className="p-4 text-center">In Room</th>
-                                                <th className="p-4 text-center">Hosting Team</th>
-                                                <th className="p-4 text-center">Buzzing In</th>
-                                                <th className="p-4 text-center">Buzzing Out</th>
-                                                <th className="p-4 text-left">Notes</th>
-                                                <th className="p-4 text-center">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {completedEvents.map(entry => {
-                                                const key = entry[0];
-                                                const event = entry[1];
-                                                const buzzingIn = event.presses ? event.presses.filter(p => p.block === 'buzzing-in').length : 0;
-                                                const buzzingOut = event.presses ? event.presses.filter(p => p.block === 'buzzing-out').length : 0;
-                                                return (
-                                                    <tr key={key} className="border-b border-gray-200 hover:bg-gray-50">
-                                                        <td className="p-4">{event.venue}</td>
-                                                        <td className="p-4">{event.month}</td>
-                                                        <td className="p-4">{event.date}</td>
-                                                        <td className="p-4 text-center font-semibold text-blue-600">{event.scores.blue}</td>
-                                                        <td className="p-4 text-center font-semibold text-red-600">{event.scores.red}</td>
-                                                        <td className="p-4 text-center font-semibold text-green-600">{event.scores.green}</td>
-                                                        <td className="p-4 text-center">{event.inRoom || '-'}</td>
-                                                        <td className="p-4 text-center">{event.hostingTeam || '-'}</td>
-                                                        <td className="p-4 text-center">{buzzingIn}</td>
-                                                        <td className="p-4 text-center">{buzzingOut}</td>
-                                                        <td className="p-4 text-sm">{event.notes || '-'}</td>
-                                                        <td className="p-4 text-center">
-                                                            <button onClick={() => handleEditEvent(key)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                                                                Edit
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
+                            <div className="bg-white rounded-lg overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-800 text-white">
+                                        <tr>
+                                            <th className="p-4 text-left">Venue</th>
+                                            <th className="p-4 text-left">Month</th>
+                                            <th className="p-4 text-left">Date</th>
+                                            <th className="p-4">3 New</th>
+                                            <th className="p-4">One 2 One</th>
+                                            <th className="p-4">Brought</th>
+                                            <th className="p-4">In Room</th>
+                                            <th className="p-4">Team</th>
+                                            <th className="p-4">Buzz In</th>
+                                            <th className="p-4">Buzz Out</th>
+                                            <th className="p-4 text-left">Notes</th>
+                                            <th className="p-4">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {done.map(([k, ev]) => {
+                                            const bi = ev.presses ? ev.presses.filter(p => p.block === 'buzzing-in').length : 0;
+                                            const bo = ev.presses ? ev.presses.filter(p => p.block === 'buzzing-out').length : 0;
+                                            return (
+                                                <tr key={k} className="border-b">
+                                                    <td className="p-4">{ev.venue}</td>
+                                                    <td className="p-4">{ev.month}</td>
+                                                    <td className="p-4">{ev.date}</td>
+                                                    <td className="p-4 text-center font-semibold text-blue-600">{ev.scores.blue}</td>
+                                                    <td className="p-4 text-center font-semibold text-red-600">{ev.scores.red}</td>
+                                                    <td className="p-4 text-center font-semibold text-green-600">{ev.scores.green}</td>
+                                                    <td className="p-4 text-center">{ev.inRoom || '-'}</td>
+                                                    <td className="p-4 text-center">{ev.team || '-'}</td>
+                                                    <td className="p-4 text-center">{bi}</td>
+                                                    <td className="p-4 text-center">{bo}</td>
+                                                    <td className="p-4 text-sm">{ev.notes || '-'}</td>
+                                                    <td className="p-4 text-center"><button onClick={() => editEv(k)} className="px-4 py-2 bg-blue-600 text-white rounded text-sm">Edit</button></td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
-
-                            {completedEvents.length === 0 && (
-                                <div className="text-center text-white text-xl mt-12">
-                                    No events tracked yet. Start tracking to see data here!
-                                </div>
-                            )}
-
-                            {editingEvent && (
+                            {done.length === 0 && <div className="text-center text-white text-xl mt-12">No events yet!</div>}
+                            {edit && (
                                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
                                     <div className="bg-white rounded-lg p-8 max-w-md w-full">
-                                        <h3 className="text-2xl font-bold mb-4">Edit Event Details</h3>
+                                        <h3 className="text-2xl font-bold mb-4">Edit Event</h3>
                                         <div className="mb-4">
-                                            <label className="block text-gray-700 font-semibold mb-2">In the Room</label>
-                                            <input type="number" value={inRoom} onChange={(e) => setInRoom(e.target.value)} className="w-full p-3 border-2 border-gray-300 rounded-lg" />
+                                            <label className="block font-semibold mb-2">In the Room</label>
+                                            <input type="number" value={inRoom} onChange={(e) => setInRoom(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
                                         </div>
                                         <div className="mb-4">
-                                            <label className="block text-gray-700 font-semibold mb-2">Hosting Team</label>
-                                            <input type="number" value={hostingTeam} onChange={(e) => setHostingTeam(e.target.value)} className="w-full p-3 border-2 border-gray-300 rounded-lg" />
+                                            <label className="block font-semibold mb-2">Hosting Team</label>
+                                            <input type="number" value={team} onChange={(e) => setTeam(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
                                         </div>
                                         <div className="mb-6">
-                                            <label className="block text-gray-700 font-semibold mb-2">Notes</label>
-                                            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 border-gray-300 rounded-lg" rows="3"></textarea>
+                                            <label className="block font-semibold mb-2">Notes</label>
+                                            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 rounded-lg" rows="3"></textarea>
                                         </div>
                                         <div className="flex gap-4">
-                                            <button onClick={() => { setEditingEvent(null); setInRoom(''); setHostingTeam(''); setNotes(''); }} className="flex-1 p-3 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400">
-                                                Cancel
-                                            </button>
-                                            <button onClick={handleSaveEdit} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">
-                                                Save Changes
-                                            </button>
+                                            <button onClick={() => { setEdit(null); setInRoom(''); setTeam(''); setNotes(''); }} className="flex-1 p-3 bg-gray-300 rounded-lg font-semibold">Cancel</button>
+                                            <button onClick={saveEdit} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
                                         </div>
                                     </div>
                                 </div>
@@ -585,3 +370,10 @@
                         </div>
                     </div>
                 );
+            }
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
