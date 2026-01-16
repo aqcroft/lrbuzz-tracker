@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LR Buzz 321 Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const VENUES = ['Hinckley', 'Leicester', 'Loughborough', 'Lutterworth', 'Market Harborough'];
+        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const PIN = '1232';
+
+        function App() {
+            const [screen, setScreen] = useState('venue');
+            const [venue, setVenue] = useState('');
+            const [month, setMonth] = useState('');
+            const [date, setDate] = useState('');
+            const [pin, setPin] = useState('');
+            const [pinMode, setPinMode] = useState('');
+            const [events, setEvents] = useState({});
+            const [scores, setScores] = useState({ blue: 0, red: 0, green: 0 });
+            const [presses, setPresses] = useState([]);
+            const [inRoom, setInRoom] = useState('');
+            const [team, setTeam] = useState('');
+            const [notes, setNotes] = useState('');
+            const [warn, setWarn] = useState(null);
+            const [edit, setEdit] = useState(null);
+
+            useEffect(() => {
+                try {
+                    const data = localStorage.getItem('lrbuzz');
+                    if (data) setEvents(JSON.parse(data));
+                } catch (e) {}
+            }, []);
+
+            const save = (e) => {
+                try {
+                    localStorage.setItem('lrbuzz', JSON.stringify(e));
+                    setEvents(e);
+                } catch (err) {}
+            };
+
+            const key = (v, m) => v + '-' + m;
+
+            const block = () => {
+                const n = new Date();
+                const t = n.getHours() * 100 + n.getMinutes();
+                if (t >= 945 && t <= 1045) return 'buzzing-in';
+                if (t >= 1115 && t <= 1215) return 'buzzing-out';
+                return 'outside-hours';
+            };
+
+            const pickVenue = (v) => { setVenue(v); setScreen('month'); };
+
+            const pickMonth = (m) => {
+                const k = key(venue, m);
+                const ex = events[k];
+                const curr = new Date().getMonth();
+                const sel = MONTHS.indexOf(m);
+                if (sel > curr) {
+                    setWarn({ msg: 'Selecting ' + m + ' (future). Continue?', ok: () => go(m, ex) });
+                    return;
+                }
+                if (ex && ex.done) {
+                    setWarn({ msg: 'Data exists for ' + m + '. Overwrite?', ok: () => go(m, ex) });
+                    return;
+                }
+                go(m, ex);
+            };
+
+            const go = (m, ex) => {
+                setMonth(m);
+                setWarn(null);
+                if (ex && !ex.done) {
+                    setScores(ex.scores);
+                    setPresses(ex.presses || []);
+                    setDate(ex.date);
+                    setNotes(ex.notes || '');
+                } else {
+                    setDate(new Date().toISOString().split('T')[0]);
+                    setScores({ blue: 0, red: 0, green: 0 });
+                    setPresses([]);
+                    setNotes('');
+                }
+                setPinMode('start');
+                setPin('');
+                setScreen('pin');
+            };
+
+            const checkPin = () => {
+                if (pin === PIN) {
+                    setScreen(pinMode === 'start' ? 'track' : 'finish');
+                    setPin('');
+                } else {
+                    alert('Wrong PIN');
+                    setPin('');
+                }
+            };
+
+            const press = (c) => {
+                const s = { ...scores };
+                s[c]++;
+                const p = { color: c, time: new Date().toISOString(), block: block() };
+                const ps = [...presses, p];
+                setScores(s);
+                setPresses(ps);
+                const k = key(venue, month);
+                const e = { ...events };
+                e[k] = { venue, month, date, scores: s, presses: ps, notes, inRoom: '', team: '', done: false };
+                save(e);
+            };
+
+            const finish = (skip) => {
+                const k = key(venue, month);
+                const e = { ...events };
+                e[k] = { venue, month, date, scores, presses, inRoom: skip ? '' : inRoom, team: skip ? '' : team, notes, done: true };
+                save(e);
+                setVenue('');
+                setMonth('');
+                setScores({ blue: 0, red: 0, green: 0 });
+                setPresses([]);
+                setInRoom('');
+                setTeam('');
+                setNotes('');
+                setScreen('venue');
+            };
+
+            const csv = () => {
+                let c = 'Venue,Month,Date,3 New Met,One 2 Ones,Brought Some1,In Room,Team,Buzzing In,Buzzing Out,Notes\n';
+                Object.values(events).forEach(ev => {
+                    if (ev.done) {
+                        const bi = ev.presses ? ev.presses.filter(p => p.block === 'buzzing-in').length : 0;
+                        const bo = ev.presses ? ev.presses.filter(p => p.block === 'buzzing-out').length : 0;
+                        c += ev.venue + ',"' + ev.month + '",' + ev.date + ',' + ev.scores.blue + ',' + ev.scores.red + ',' + ev.scores.green + ',' + (ev.inRoom || '') + ',' + (ev.team || '') + ',' + bi + ',' + bo + ',"' + (ev.notes || '') + '"\n';
+                    }
+                });
+                try {
+                    const b = new Blob([c], { type: 'text/csv' });
+                    const u = URL.createObjectURL(b);
+                    const a = document.createElement('a');
+                    a.href = u;
+                    a.download = 'lrbuzz-' + new Date().toISOString().split('T')[0] + '.csv';
+                    a.click();
+                } catch (e) { alert(c); }
+            };
+
+            const editEv = (k) => {
+                const ev = events[k];
+                setEdit(k);
+                setInRoom(ev.inRoom || '');
+                setTeam(ev.team || '');
+                setNotes(ev.notes || '');
+            };
+
+            const saveEdit = () => {
+                const e = { ...events };
+                e[edit] = { ...events[edit], inRoom, team, notes };
+                save(e);
+                setEdit(null);
+                setInRoom('');
+                setTeam('');
+                setNotes('');
+            };
+
+            if (warn) {
+                return (
+                    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-lg p-8 max-w-md w-full">
+                            <h2 className="text-2xl font-bold mb-4">Warning</h2>
+                            <p className="mb-6">{warn.msg}</p>
+                            <div className="flex gap-4">
+                                <button onClick={() => setWarn(null)} className="flex-1 p-3 bg-gray-300 rounded-lg font-semibold">No</button>
+                                <button onClick={warn.ok} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-semibold">Yes</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (screen === 'venue') {
+                return (
+                    <div className="min-h-screen bg-gray-900 p-8">
+                        <div className="max-w-4xl mx-auto">
+                            <h1 className="text-4xl font-bold text-white mb-8 text-center">LR Buzz 321 Tracker</h1>
+                            <div className="flex flex-col gap-4 mb-8">
+                                {VENUES.map(v => <button key={v} onClick={() => pickVenue(v)} className="w-full p-8 bg-blue-600 text-white rounded-lg text-2xl font-semibold hover:bg-blue-700">{v}</button>)}
+                            </div>
+                            <button onClick={() => setScreen('review')} className="w-full p-6 bg-green-600 text-white rounded-lg text-xl font-semibold hover:bg-green-700">Review Historical Data</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (screen === 'month') {
+                return (
+                    <div className="min-h-screen bg-gray-900 p-8">
+                        <div className="max-w-4xl mx-auto">
+                            <button onClick={() => setScreen('venue')} className="mb-6 text-white">← Back</button>
+                            <h1 className="text-4xl font-bold text-white mb-4 text-center">{venue}</h1>
+                            <h2 className="text-2xl text-white mb-8 text-center">Select Month</h2>
+                            <div className="grid grid-cols-3 gap-4">
+                                {MONTHS.map(m => {
+                                    const k = key(venue, m);
+                                    const has = events[k] && events[k].done;
+                                    return <button key={m} onClick={() => pickMonth(m)} className={'p-6 rounded-lg text-xl font-semibold ' + (has ? 'bg-yellow-600 text-white' : 'bg-blue-600 text-white')}>{m}{has && <div className="text-sm mt-1">✓</div>}</button>;
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (screen === 'pin') {
+                return (
+                    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
+                        <div className="bg-white rounded-lg p-8 max-w-md w-full">
+                            <h2 className="text-3xl font-bold mb-6 text-center">{pinMode === 'start' ? 'Enter PIN to Start' : 'Enter PIN to Finish'}</h2>
+                            <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && checkPin()} className="w-full p-4 border-2 rounded-lg text-2xl text-center mb-6" placeholder="****" maxLength="4" autoFocus />
+                            <div className="flex gap-4">
+                                <button onClick={() => setScreen(pinMode === 'start' ? 'month' : 'track')} className="flex-1 p-4 bg-gray-300 rounded-lg font-semibold">Cancel</button>
+                                <button onClick={checkPin} className="flex-1 p-4 bg-blue-600 text-white rounded-lg font-semibold">Submit</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (screen === 'track') {
+                return (
+                    <div className="h-screen bg-gray-900 flex flex-col p-4">
+                        <div className="text-center mb-4">
+                            <h1 className="text-3xl font-bold text-white mb-2">#LRBuzz321 tracker: Flip once if you...</h1>
+                            <div className="text-xl text-gray-300">{venue} - {month} {date}</div>
+                        </div>
+                        <div className="flex-1 flex gap-4">
+                            <button onClick={() => press('blue')} className="flex-1 bg-blue-600 rounded-lg flex flex-col items-center justify-center">
+                                <div className="text-9xl font-bold text-white mb-4">{scores.blue}</div>
+                                <div className="text-2xl font-semibold text-white">3 new met</div>
+                            </button>
+                            <button onClick={() => press('red')} className="flex-1 bg-red-600 rounded-lg flex flex-col items-center justify-center">
+                                <div className="text-9xl font-bold text-white mb-4">{scores.red}</div>
+                                <div className="text-2xl font-semibold text-white">one 2 one's</div>
+                                <div className="text-xl text-white">(set / sat)</div>
+                            </button>
+                            <button onClick={() => press('green')} className="flex-1 bg-green-600 rounded-lg flex flex-col items-center justify-center">
+                                <div className="text-9xl font-bold text-white mb-4">{scores.green}</div>
+                                <div className="text-2xl font-semibold text-white">brought some1 along</div>
+                            </button>
+                        </div>
+                        <button onClick={() => { setPinMode('finish'); setPin(''); setScreen('pin'); }} className="mt-4 px-8 py-3 bg-yellow-600 text-white rounded-lg font-semibold self-end">Finish</button>
+                    </div>
+                );
+            }
+
+            if (screen === 'finish') {
+                return (
+                    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
+                        <div className="bg-white rounded-lg p-8 max-w-md w-full">
+                            <h2 className="text-3xl font-bold mb-6">Event Complete!</h2>
+                            <div className="mb-6 p-4 bg-gray-100 rounded-lg">
+                                <div className="text-xl font-semibold mb-2">Final Scores:</div>
+                                <div>3 new met: {scores.blue}</div>
+                                <div>One 2 one's: {scores.red}</div>
+                                <div>Brought some1: {scores.green}</div>
+                            </div>
+                                                                            <div className="mb-4">
+                                                    <label className="block font-semibold mb-2">Hosting Team</label>
+                                                    <input type="number" value={team} onChange={(e) => setTeam(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label className="block font-semibold mb-2">Notes</label>
+                                                    <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 rounded-lg" rows="3"></textarea>
+                                                </div>
+                                                <button onClick={() => setEditScores(true)} className="w-full p-3 mb-4 bg-yellow-600 text-white rounded-lg font-semibold">Edit 321 Scores</button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="mb-4">
+                                                    <label className="block font-semibold mb-2" style={{ color: '#00A19A' }}>3 New Met</label>
+                                                    <input type="number" value={scores.blue} onChange={(e) => setScores({...scores, blue: parseInt(e.target.value) || 0})} className="w-full p-3 border-2 rounded-lg text-2xl" style={{ borderColor: '#00A19A' }} />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label className="block font-semibold mb-2" style={{ color: '#D60B52' }}>One 2 One's</label>
+                                                    <input type="number" value={scores.red} onChange={(e) => setScores({...scores, red: parseInt(e.target.value) || 0})} className="w-full p-3 border-2 rounded-lg text-2xl" style={{ borderColor: '#D60B52' }} />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label className="block font-semibold mb-2" style={{ color: '#B6BD00' }}>Brought Some1 Along</label>
+                                                    <input type="number" value={scores.green} onChange={(e) => setScores({...scores, green: parseInt(e.target.value) || 0})} className="w-full p-3 border-2 rounded-lg text-2xl" style={{ borderColor: '#B6BD00' }} />
+                                                </div>
+                                                <button onClick={() => setEditScores(false)} className="w-full p-3 mb-4 bg-gray-600 text-white rounded-lg font-semibold">Back to Host Fields</button>
+                                            </>
+                                        )}
+                                        
+                                        <div className="flex gap-4">
+                                            <button onClick={() => { setEdit(null); setEditScores(false); setInRoom(''); setTeam(''); setNotes(''); }} className="flex-1 p-3 bg-gray-300 rounded-lg font-semibold">Cancel</button>
+                                            <button onClick={saveEdit} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html><label className="block font-semibold mb-2">In the Room</label>
+                                <input type="number" value={inRoom} onChange={(e) => setInRoom(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
+                            </div>
+                            <div className="mb-4">
+                                <label className="block font-semibold mb-2">Hosting Team</label>
+                                <input type="number" value={team} onChange={(e) => setTeam(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
+                            </div>
+                            <div className="mb-6">
+                                <label className="block font-semibold mb-2">Notes</label>
+                                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 rounded-lg" rows="3"></textarea>
+                            </div>
+                            <div className="flex gap-4">
+                                <button onClick={() => finish(true)} className="flex-1 p-4 bg-gray-300 rounded-lg font-semibold">Later</button>
+                                <button onClick={() => finish(false)} className="flex-1 p-4 bg-green-600 text-white rounded-lg font-semibold">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (screen === 'review') {
+                const done = Object.entries(events).filter(e => e[1].done).sort((a, b) => MONTHS.indexOf(a[1].month) - MONTHS.indexOf(b[1].month));
+                return (
+                    <div className="min-h-screen bg-gray-900 p-8">
+                        <div className="max-w-6xl mx-auto">
+                            <div className="flex justify-between items-center mb-8">
+                                <button onClick={() => setScreen('venue')} className="text-white">← Back</button>
+                                <h1 className="text-4xl font-bold text-white">Historical Data</h1>
+                                <button onClick={csv} className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold">Export CSV</button>
+                            </div>
+                            <div className="bg-white rounded-lg overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-800 text-white">
+                                        <tr>
+                                            <th className="p-4 text-left">Venue</th>
+                                            <th className="p-4 text-left">Month</th>
+                                            <th className="p-4 text-left">Date</th>
+                                            <th className="p-4">3 New</th>
+                                            <th className="p-4">One 2 One</th>
+                                            <th className="p-4">Brought</th>
+                                            <th className="p-4">In Room</th>
+                                            <th className="p-4">Team</th>
+                                            <th className="p-4">Buzz In</th>
+                                            <th className="p-4">Buzz Out</th>
+                                            <th className="p-4 text-left">Notes</th>
+                                            <th className="p-4">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {done.map(([k, ev]) => {
+                                            const bi = ev.presses ? ev.presses.filter(p => p.block === 'buzzing-in').length : 0;
+                                            const bo = ev.presses ? ev.presses.filter(p => p.block === 'buzzing-out').length : 0;
+                                            return (
+                                                <tr key={k} className="border-b">
+                                                    <td className="p-4">{ev.venue}</td>
+                                                    <td className="p-4">{ev.month}</td>
+                                                    <td className="p-4">{ev.date}</td>
+                                                    <td className="p-4 text-center font-semibold" style={{ color: '#00A19A' }}>{ev.scores.blue}</td>
+                                                    <td className="p-4 text-center font-semibold" style={{ color: '#D60B52' }}>{ev.scores.red}</td>
+                                                    <td className="p-4 text-center font-semibold" style={{ color: '#B6BD00' }}>{ev.scores.green}</td>
+                                                    <td className="p-4 text-center">{ev.inRoom || '-'}</td>
+                                                    <td className="p-4 text-center">{ev.team || '-'}</td>
+                                                    <td className="p-4 text-center">{ev.buzzInCount || 0}</td>
+                                                    <td className="p-4 text-center">{ev.buzzOutCount || 0}</td>
+                                                    <td className="p-4 text-center">{buzzers}</td>
+                                                    <td className="p-4 text-center">{pctEngaged}%</td>
+                                                    <td className="p-4 text-center">{pct3}%</td>
+                                                    <td className="p-4 text-center">{pct2}%</td>
+                                                    <td className="p-4 text-sm">{ev.notes || '-'}</td>
+                                                    <td className="p-4 text-center"><button onClick={() => editEv(k)} className="px-4 py-2 bg-blue-600 text-white rounded text-sm">Edit</button></td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {done.length === 0 && <div className="text-center text-white text-xl mt-12">No events yet!</div>}
+                            {edit && (
+                                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                                    <div className="bg-white rounded-lg p-8 max-w-md w-full max-h-screen overflow-y-auto">
+                                        <h3 className="text-2xl font-bold mb-4">Edit Event</h3>
+                                        
+                                        {!editScores ? (
+                                            <>
+                                                <div className="mb-4">
+                                                    <label className="block font-semibold mb-2">In the Room</label>
+                                                    <input type="number" value={inRoom} onChange={(e) => setInRoom(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label className="block font-semibold mb-2">Hosting Team</label>
+                                                    <input type="number" value={team} onChange={(e) => setTeam(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label className="block font-semibold mb-2">Notes</label>
+                                                    <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 rounded-lg" rows="3"></textarea>
+                                                </div>
+                                                <button onClick={() => setEditScores(true)} className="w-full p-3 mb-4 bg-yellow-600 text-white rounded-lg font-semibold">Edit 321 Scores</button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="mb-4">
+                                                    <label className="block font-semibold mb-2 text-blue-600">3 New Met</label>
+                                                    <input type="number" value={scores.blue} onChange={(e) => setScores({...scores, blue: parseInt(e.target.value) || 0})} className="w-full p-3 border-2 border-blue-600 rounded-lg text-2xl" />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label className="block font-semibold mb-2 text-red-600">One 2 One's</label>
+                                                    <input type="number" value={scores.red} onChange={(e) => setScores({...scores, red: parseInt(e.target.value) || 0})} className="w-full p-3 border-2 border-red-600 rounded-lg text-2xl" />
+                                                </div>
+                                                <div className="mb-4">
+                                                    <label className="block font-semibold mb-2 text-green-600">Brought Some1 Along</label>
+                                                    <input type="number" value={scores.green} onChange={(e) => setScores({...scores, green: parseInt(e.target.value) || 0})} className="w-full p-3 border-2 border-green-600 rounded-lg text-2xl" />
+                                                </div>
+                                                <button onClick={() => setEditScores(false)} className="w-full p-3 mb-4 bg-gray-600 text-white rounded-lg font-semibold">Back to Host Fields</button>
+                                            </>
+                                        )}
+                                        
+                                        <div className="flex gap-4">
+                                            <button onClick={() => { setEdit(null); setEditScores(false); setInRoom(''); setTeam(''); setNotes(''); }} className="flex-1 p-3 bg-gray-300 rounded-lg font-semibold">Cancel</button>
+                                            <button onClick={saveEdit} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>ev.scores.green}</td>
+                                                    <td className="p-4 text-center">{ev.inRoom || '-'}</td>
+                                                    <td className="p-4 text-center">{ev.team || '-'}</td>
+                                                    <td className="p-4 text-center">{bi}</td>
+                                                    <td className="p-4 text-center">{bo}</td>
+                                                    <td className="p-4 text-sm">{ev.notes || '-'}</td>
+                                                    <td className="p-4 text-center"><button onClick={() => editEv(k)} className="px-4 py-2 bg-blue-600 text-white rounded text-sm">Edit</button></td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {done.length === 0 && <div className="text-center text-white text-xl mt-12">No events yet!</div>}
+                            {edit && (
+                                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                                    <div className="bg-white rounded-lg p-8 max-w-md w-full">
+                                        <h3 className="text-2xl font-bold mb-4">Edit Event</h3>
+                                        <div className="mb-4">
+                                            <label className="block font-semibold mb-2">In the Room</label>
+                                            <input type="number" value={inRoom} onChange={(e) => setInRoom(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
+                                        </div>
+                                        <div className="mb-4">
+                                            <label className="block font-semibold mb-2">Hosting Team</label>
+                                            <input type="number" value={team} onChange={(e) => setTeam(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
+                                        </div>
+                                        <div className="mb-6">
+                                            <label className="block font-semibold mb-2">Notes</label>
+                                            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 rounded-lg" rows="3"></textarea>
+                                        </div>
+                                        <div className="flex gap-4">
+                                            <button onClick={() => { setEdit(null); setInRoom(''); setTeam(''); setNotes(''); }} className="flex-1 p-3 bg-gray-300 rounded-lg font-semibold">Cancel</button>
+                                            <button onClick={saveEdit} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
