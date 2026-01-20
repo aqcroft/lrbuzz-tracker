@@ -8,6 +8,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pop {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 1; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+        .emoji-pop {
+            animation: pop 0.6s ease-out;
+            position: absolute;
+            font-size: 4rem;
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body>
     <div id="root"></div>
@@ -16,6 +29,8 @@
         const VENUES = ['Hinckley', 'Leicester', 'Loughborough', 'Lutterworth', 'Market Harborough'];
         const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         const PIN = '1232';
+        const COOLDOWN = 3000;
+        const BUZZER_WINDOW = 5000;
 
         function App() {
             const [screen, setScreen] = useState('venue');
@@ -32,6 +47,16 @@
             const [notes, setNotes] = useState('');
             const [warn, setWarn] = useState(null);
             const [edit, setEdit] = useState(null);
+            const [editScores, setEditScores] = useState(false);
+            const [lastPressAttempt, setLastPressAttempt] = useState({ blue: 0, red: 0, green: 0 });
+            const [emoji, setEmoji] = useState(null);
+            const [longPressTimer, setLongPressTimer] = useState(null);
+            const lastInteractionRef = useRef(0);
+            const buzzerCountRef = useRef(0);
+            const buzzInCountRef = useRef(0);
+            const buzzOutCountRef = useRef(0);
+            const lastBuzzInRef = useRef(0);
+            const lastBuzzOutRef = useRef(0);
 
             useEffect(() => {
                 try {
@@ -52,9 +77,30 @@
             const block = () => {
                 const n = new Date();
                 const t = n.getHours() * 100 + n.getMinutes();
-                if (t >= 945 && t <= 1045) return 'buzzing-in';
-                if (t >= 1115 && t <= 1215) return 'buzzing-out';
+                if (t >= 1000 && t < 1045) return 'buzzing-in';
+                if (t >= 1115 && t <= 1200) return 'buzzing-out';
                 return 'outside-hours';
+            };
+
+            const getTimeRemaining = () => {
+                const now = new Date();
+                const hours = now.getHours();
+                const minutes = now.getMinutes();
+                const currentTime = hours * 60 + minutes;
+                
+                const eventStart = 10 * 60;
+                const eventEnd = 12 * 60;
+
+                if (currentTime < eventStart) {
+                    return { phase: 'starting', display: 'Starting soon' };
+                } else if (currentTime >= eventStart && currentTime <= eventEnd) {
+                    const remaining = eventEnd - currentTime;
+                    const hrs = Math.floor(remaining / 60);
+                    const mins = remaining % 60;
+                    return { phase: 'active', display: 'Buzz time remaining: ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm' };
+                } else {
+                    return { phase: 'ended', display: 'Event ended' };
+                }
             };
 
             const pickVenue = (v) => { setVenue(v); setScreen('month'); };
@@ -83,11 +129,17 @@
                     setPresses(ex.presses || []);
                     setDate(ex.date);
                     setNotes(ex.notes || '');
+                    buzzerCountRef.current = ex.buzzerCount || 0;
+                    buzzInCountRef.current = ex.buzzInCount || 0;
+                    buzzOutCountRef.current = ex.buzzOutCount || 0;
                 } else {
                     setDate(new Date().toISOString().split('T')[0]);
                     setScores({ blue: 0, red: 0, green: 0 });
                     setPresses([]);
                     setNotes('');
+                    buzzerCountRef.current = 0;
+                    buzzInCountRef.current = 0;
+                    buzzOutCountRef.current = 0;
                 }
                 setPinMode('start');
                 setPin('');
@@ -104,23 +156,127 @@
                 }
             };
 
-            const press = (c) => {
+            const showEmoji = (color) => {
+                const emojis = { blue: '🎉', red: '🥳', green: '🙏' };
+                setEmoji({ emoji: emojis[color], color });
+                setTimeout(() => setEmoji(null), 600);
+                playSound(color);
+            };
+
+            const playSound = (color) => {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    const frequencies = { blue: 523.25, red: 659.25, green: 783.99 };
+                    oscillator.frequency.value = frequencies[color];
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.3);
+                } catch (e) {
+                    // Silently fail if audio not supported
+                }
+            };
+
+            const handlePressStart = (color) => {
+                const timer = setTimeout(() => {
+                    undo(color);
+                    setLongPressTimer(null);
+                }, 2000);
+                setLongPressTimer(timer);
+            };
+
+            const handlePressEnd = () => {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    setLongPressTimer(null);
+                }
+            };
+
+            const undo = (color) => {
+                if (scores[color] > 0) {
+                    const s = { ...scores };
+                    s[color]--;
+                    setScores(s);
+                    const newPresses = presses.slice(0, -1);
+                    setPresses(newPresses);
+                    const k = key(venue, month);
+                    const e = { ...events };
+                    e[k] = { venue, month, date, scores: s, presses: newPresses, notes, inRoom: '', team: '', done: false, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
+                    save(e);
+                }
+            };
+
+            const press = (color) => {
+                const now = Date.now();
+                const timeSinceLastAttempt = now - lastPressAttempt[color];
+                
+                setLastPressAttempt({ ...lastPressAttempt, [color]: now });
+                
+                if (timeSinceLastAttempt < COOLDOWN) {
+                    return;
+                }
+
+                const timeSinceLastInteraction = now - lastInteractionRef.current;
+                if (timeSinceLastInteraction > BUZZER_WINDOW) {
+                    buzzerCountRef.current++;
+                }
+                lastInteractionRef.current = now;
+
+                const currentBlock = block();
+                if (currentBlock === 'buzzing-in') {
+                    const timeSinceLastBuzzIn = now - lastBuzzInRef.current;
+                    if (timeSinceLastBuzzIn > BUZZER_WINDOW) {
+                        buzzInCountRef.current++;
+                    }
+                    lastBuzzInRef.current = now;
+                } else if (currentBlock === 'buzzing-out') {
+                    const timeSinceLastBuzzOut = now - lastBuzzOutRef.current;
+                    if (timeSinceLastBuzzOut > BUZZER_WINDOW) {
+                        buzzOutCountRef.current++;
+                    }
+                    lastBuzzOutRef.current = now;
+                }
+
                 const s = { ...scores };
-                s[c]++;
-                const p = { color: c, time: new Date().toISOString(), block: block() };
+                s[color]++;
+                const p = { color: color, time: new Date().toISOString(), block: currentBlock };
                 const ps = [...presses, p];
                 setScores(s);
                 setPresses(ps);
+                showEmoji(color);
+
                 const k = key(venue, month);
                 const e = { ...events };
-                e[k] = { venue, month, date, scores: s, presses: ps, notes, inRoom: '', team: '', done: false };
+                e[k] = { venue, month, date, scores: s, presses: ps, notes, inRoom: '', team: '', done: false, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
                 save(e);
             };
 
             const finish = (skip) => {
                 const k = key(venue, month);
                 const e = { ...events };
-                e[k] = { venue, month, date, scores, presses, inRoom: skip ? '' : inRoom, team: skip ? '' : team, notes, done: true };
+                e[k] = { 
+                    venue, 
+                    month, 
+                    date, 
+                    scores, 
+                    presses, 
+                    inRoom: skip ? '' : inRoom, 
+                    team: skip ? '' : team, 
+                    notes, 
+                    done: true,
+                    buzzerCount: buzzerCountRef.current,
+                    buzzInCount: buzzInCountRef.current,
+                    buzzOutCount: buzzOutCountRef.current
+                };
                 save(e);
                 setVenue('');
                 setMonth('');
@@ -129,16 +285,25 @@
                 setInRoom('');
                 setTeam('');
                 setNotes('');
+                buzzerCountRef.current = 0;
+                buzzInCountRef.current = 0;
+                buzzOutCountRef.current = 0;
+                lastInteractionRef.current = 0;
+                lastBuzzInRef.current = 0;
+                lastBuzzOutRef.current = 0;
                 setScreen('venue');
             };
 
             const csv = () => {
-                let c = 'Venue,Month,Date,3 New Met,One 2 Ones,Brought Some1,In Room,Team,Buzzing In,Buzzing Out,Notes\n';
+                let c = 'Venue,Month,Date,3 New Met,One 2 Ones,Brought Some1,In Room,Team,Buzz In (10:00-10:45),Buzz Out (11:15-12:00),Total Buzzers Interacting (assumed),% Buzzers Engaged,% Meeting 3 New,% Doing 1-2-1s,Notes\n';
                 Object.values(events).forEach(ev => {
                     if (ev.done) {
-                        const bi = ev.presses ? ev.presses.filter(p => p.block === 'buzzing-in').length : 0;
-                        const bo = ev.presses ? ev.presses.filter(p => p.block === 'buzzing-out').length : 0;
-                        c += ev.venue + ',"' + ev.month + '",' + ev.date + ',' + ev.scores.blue + ',' + ev.scores.red + ',' + ev.scores.green + ',' + (ev.inRoom || '') + ',' + (ev.team || '') + ',' + bi + ',' + bo + ',"' + (ev.notes || '') + '"\n';
+                        const room = parseInt(ev.inRoom) || 0;
+                        const buzzers = ev.buzzerCount || 0;
+                        const pctEngaged = room > 0 ? Math.round((buzzers / room) * 100) : 0;
+                        const pct3 = room > 0 ? Math.round((ev.scores.blue / room) * 100) : 0;
+                        const pct2 = room > 0 ? Math.round((ev.scores.red / room) * 100) : 0;
+                        c += ev.venue + ',"' + ev.month + '",' + ev.date + ',' + ev.scores.blue + ',' + ev.scores.red + ',' + ev.scores.green + ',' + (ev.inRoom || '') + ',' + (ev.team || '') + ',' + (ev.buzzInCount || 0) + ',' + (ev.buzzOutCount || 0) + ',' + buzzers + ',' + pctEngaged + '%,' + pct3 + '%,' + pct2 + '%,"' + (ev.notes || '') + '"\n';
                     }
                 });
                 try {
@@ -157,13 +322,16 @@
                 setInRoom(ev.inRoom || '');
                 setTeam(ev.team || '');
                 setNotes(ev.notes || '');
+                setScores(ev.scores);
+                setEditScores(false);
             };
 
             const saveEdit = () => {
                 const e = { ...events };
-                e[edit] = { ...events[edit], inRoom, team, notes };
+                e[edit] = { ...events[edit], inRoom, team, notes, scores };
                 save(e);
                 setEdit(null);
+                setEditScores(false);
                 setInRoom('');
                 setTeam('');
                 setNotes('');
@@ -233,23 +401,67 @@
             }
 
             if (screen === 'track') {
+                const timeInfo = getTimeRemaining();
                 return (
                     <div className="h-screen bg-gray-900 flex flex-col p-4">
                         <div className="text-center mb-4">
-                            <h1 className="text-3xl font-bold text-white mb-2">#LRBuzz321 tracker: Flip once if you...</h1>
-                            <div className="text-xl text-gray-300">{venue} - {month} {date}</div>
+                            <h1 className="text-3xl font-bold text-white mb-1">#LRBuzz 321 tracker</h1>
+                            <h2 className="text-2xl font-semibold text-white mb-2">Tap once if you...</h2>
+                            <div className="text-xl text-gray-300 mb-1">{venue} - {month} {date}</div>
+                            <div className="text-lg text-yellow-400 font-semibold">{timeInfo.display}</div>
                         </div>
-                        <div className="flex-1 flex gap-4">
-                            <button onClick={() => press('blue')} className="flex-1 bg-blue-600 rounded-lg flex flex-col items-center justify-center">
+                        <div className="flex-1 flex gap-4 relative">
+                            {emoji && (
+                                <div 
+                                    className="emoji-pop" 
+                                    style={{ 
+                                        position: 'absolute',
+                                        top: '-60px',
+                                        left: emoji.color === 'blue' ? '16.66%' : emoji.color === 'red' ? '50%' : '83.33%',
+                                        transform: 'translateX(-50%)',
+                                        zIndex: 50
+                                    }}
+                                >
+                                    {emoji.emoji}
+                                </div>
+                            )}
+                            <button 
+                                onTouchStart={() => handlePressStart('blue')}
+                                onTouchEnd={handlePressEnd}
+                                onMouseDown={() => handlePressStart('blue')}
+                                onMouseUp={handlePressEnd}
+                                onMouseLeave={handlePressEnd}
+                                onClick={() => press('blue')} 
+                                className="flex-1 rounded-lg flex flex-col items-center justify-center"
+                                style={{ backgroundColor: '#00A19A' }}
+                            >
                                 <div className="text-9xl font-bold text-white mb-4">{scores.blue}</div>
-                                <div className="text-2xl font-semibold text-white">3 new met</div>
+                                <div className="text-2xl font-semibold text-white">met 3 new people</div>
                             </button>
-                            <button onClick={() => press('red')} className="flex-1 bg-red-600 rounded-lg flex flex-col items-center justify-center">
+                            <button 
+                                onTouchStart={() => handlePressStart('red')}
+                                onTouchEnd={handlePressEnd}
+                                onMouseDown={() => handlePressStart('red')}
+                                onMouseUp={handlePressEnd}
+                                onMouseLeave={handlePressEnd}
+                                onClick={() => press('red')} 
+                                className="flex-1 rounded-lg flex flex-col items-center justify-center"
+                                style={{ backgroundColor: '#D60B52' }}
+                            >
                                 <div className="text-9xl font-bold text-white mb-4">{scores.red}</div>
                                 <div className="text-2xl font-semibold text-white">one 2 one's</div>
-                                <div className="text-xl text-white">(set / sat)</div>
+                                <div className="text-xl text-white">(set or sat)</div>
                             </button>
-                            <button onClick={() => press('green')} className="flex-1 bg-green-600 rounded-lg flex flex-col items-center justify-center">
+                            <button 
+                                onTouchStart={() => handlePressStart('green')}
+                                onTouchEnd={handlePressEnd}
+                                onMouseDown={() => handlePressStart('green')}
+                                onMouseUp={handlePressEnd}
+                                onMouseLeave={handlePressEnd}
+                                onClick={() => press('green')} 
+                                className="flex-1 rounded-lg flex flex-col items-center justify-center"
+                                style={{ backgroundColor: '#B6BD00' }}
+                            >
                                 <div className="text-9xl font-bold text-white mb-4">{scores.green}</div>
                                 <div className="text-2xl font-semibold text-white">brought some1 along</div>
                             </button>
@@ -269,8 +481,105 @@
                                 <div>3 new met: {scores.blue}</div>
                                 <div>One 2 one's: {scores.red}</div>
                                 <div>Brought some1: {scores.green}</div>
+                                <div className="mt-2 text-sm text-gray-600">Total buzzers interacting: {buzzerCountRef.current}</div>
                             </div>
-                                                                            <div className="mb-4">
+                            <div className="mb-4">
+                                <label className="block font-semibold mb-2">In the Room</label>
+                                <input type="number" value={inRoom} onChange={(e) => setInRoom(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
+                            </div>
+                            <div className="mb-4">
+                                <label className="block font-semibold mb-2">Hosting Team</label>
+                                <input type="number" value={team} onChange={(e) => setTeam(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
+                            </div>
+                            <div className="mb-6">
+                                <label className="block font-semibold mb-2">Notes</label>
+                                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 rounded-lg" rows="3"></textarea>
+                            </div>
+                            <div className="flex gap-4">
+                                <button onClick={() => finish(true)} className="flex-1 p-4 bg-gray-300 rounded-lg font-semibold">Later</button>
+                                <button onClick={() => finish(false)} className="flex-1 p-4 bg-green-600 text-white rounded-lg font-semibold">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (screen === 'review') {
+                const done = Object.entries(events).filter(e => e[1].done).sort((a, b) => MONTHS.indexOf(a[1].month) - MONTHS.indexOf(b[1].month));
+                return (
+                    <div className="min-h-screen bg-gray-900 p-8">
+                        <div className="max-w-6xl mx-auto">
+                            <div className="flex justify-between items-center mb-8">
+                                <button onClick={() => setScreen('venue')} className="text-white">← Back</button>
+                                <h1 className="text-4xl font-bold text-white">Historical Data</h1>
+                                <button onClick={csv} className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold">Export CSV</button>
+                            </div>
+                            <div className="bg-white rounded-lg overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-800 text-white">
+                                        <tr>
+                                            <th className="p-4 text-left">Venue</th>
+                                            <th className="p-4 text-left">Month</th>
+                                            <th className="p-4 text-left">Date</th>
+                                            <th className="p-4">3 New</th>
+                                            <th className="p-4">1-2-1</th>
+                                            <th className="p-4">Brought</th>
+                                            <th className="p-4">In Room</th>
+                                            <th className="p-4">Team</th>
+                                            <th className="p-4">Buzz In<br/>(10:00-10:45)</th>
+                                            <th className="p-4">Buzz Out<br/>(11:15-12:00)</th>
+                                            <th className="p-4">Total Buzzers<br/>Interacting<br/>(assumed)</th>
+                                            <th className="p-4">% Buzzers<br/>Engaged</th>
+                                            <th className="p-4">% Meeting<br/>3 New</th>
+                                            <th className="p-4">% Doing<br/>1-2-1s</th>
+                                            <th className="p-4 text-left">Notes</th>
+                                            <th className="p-4">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {done.map(([k, ev]) => {
+                                            const room = parseInt(ev.inRoom) || 0;
+                                            const buzzers = ev.buzzerCount || 0;
+                                            const pctEngaged = room > 0 ? Math.round((buzzers / room) * 100) : 0;
+                                            const pct3 = room > 0 ? Math.round((ev.scores.blue / room) * 100) : 0;
+                                            const pct2 = room > 0 ? Math.round((ev.scores.red / room) * 100) : 0;
+                                            return (
+                                                <tr key={k} className="border-b">
+                                                    <td className="p-4">{ev.venue}</td>
+                                                    <td className="p-4">{ev.month}</td>
+                                                    <td className="p-4">{ev.date}</td>
+                                                    <td className="p-4 text-center font-semibold" style={{ color: '#00A19A' }}>{ev.scores.blue}</td>
+                                                    <td className="p-4 text-center font-semibold" style={{ color: '#D60B52' }}>{ev.scores.red}</td>
+                                                    <td className="p-4 text-center font-semibold" style={{ color: '#B6BD00' }}>{ev.scores.green}</td>
+                                                    <td className="p-4 text-center">{ev.inRoom || '-'}</td>
+                                                    <td className="p-4 text-center">{ev.team || '-'}</td>
+                                                    <td className="p-4 text-center">{ev.buzzInCount || 0}</td>
+                                                    <td className="p-4 text-center">{ev.buzzOutCount || 0}</td>
+                                                    <td className="p-4 text-center">{buzzers}</td>
+                                                    <td className="p-4 text-center">{pctEngaged}%</td>
+                                                    <td className="p-4 text-center">{pct3}%</td>
+                                                    <td className="p-4 text-center">{pct2}%</td>
+                                                    <td className="p-4 text-sm">{ev.notes || '-'}</td>
+                                                    <td className="p-4 text-center"><button onClick={() => editEv(k)} className="px-4 py-2 bg-blue-600 text-white rounded text-sm">Edit</button></td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {done.length === 0 && <div className="text-center text-white text-xl mt-12">No events yet!</div>}
+                            {edit && (
+                                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                                    <div className="bg-white rounded-lg p-8 max-w-md w-full max-h-screen overflow-y-auto">
+                                        <h3 className="text-2xl font-bold mb-4">Edit Event</h3>
+                                        
+                                        {!editScores ? (
+                                            <>
+                                                <div className="mb-4">
+                                                    <label className="block font-semibold mb-2">In the Room</label>
+                                                    <input type="number" value={inRoom} onChange={(e) => setInRoom(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
+                                                </div>
+                                                <div className="mb-4">
                                                     <label className="block font-semibold mb-2">Hosting Team</label>
                                                     <input type="number" value={team} onChange={(e) => setTeam(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
                                                 </div>
