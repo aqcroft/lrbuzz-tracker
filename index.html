@@ -26,9 +26,7 @@
             50% { transform: scale(1.08); opacity: 0.85; }
             100% { transform: scale(1); opacity: 1; }
         }
-        .pulse-ring {
-            animation: pulse-ring 2s ease-in-out infinite;
-        }
+        .pulse-ring { animation: pulse-ring 2s ease-in-out infinite; }
     </style>
 </head>
 <body>
@@ -40,6 +38,15 @@
         const COOLDOWN = 3000;
         const BUZZER_WINDOW = 5000;
         const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxhP0-3gLV4Ma6SdfY30qXLcy8twnxNpiNiFMjtys_1NwY2-xA5qBEd-ULvf4CFztGikg/exec';
+
+        const formatBritishDate = (isoDate) => {
+            if (!isoDate) return '';
+            const d = new Date(isoDate + 'T12:00:00');
+            const day = d.getDate();
+            const suffix = (day === 1 || day === 21 || day === 31) ? 'st' : (day === 2 || day === 22) ? 'nd' : (day === 3 || day === 23) ? 'rd' : 'th';
+            const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            return day + suffix + ' ' + monthNames[d.getMonth()] + ' ' + d.getFullYear();
+        };
 
         function App() {
             const [screen, setScreen] = useState('venue');
@@ -72,16 +79,10 @@
             const lastBuzzOutRef = useRef(0);
 
             useEffect(() => {
-                try {
-                    const data = localStorage.getItem('lrbuzz');
-                    if (data) setEvents(JSON.parse(data));
-                } catch (e) {}
+                try { const data = localStorage.getItem('lrbuzz'); if (data) setEvents(JSON.parse(data)); } catch (e) {}
             }, []);
 
-            const save = (e) => {
-                try { localStorage.setItem('lrbuzz', JSON.stringify(e)); setEvents(e); } catch (err) {}
-            };
-
+            const save = (e) => { try { localStorage.setItem('lrbuzz', JSON.stringify(e)); setEvents(e); } catch (err) {} };
             const key = (v, m) => v + '-' + m;
             const getVenueConfig = (v) => VENUE_CONFIG[v] || { host: v, pin: '0000', photo: '' };
 
@@ -94,21 +95,19 @@
 
             const getTimeRemaining = () => {
                 const now = new Date();
-                const currentTime = now.getHours() * 60 + now.getMinutes();
-                const eventStart = 10 * 60, eventEnd = 12 * 60;
-                if (currentTime < eventStart) return { display: 'Starting soon' };
-                if (currentTime >= eventStart && currentTime <= eventEnd) {
-                    const remaining = eventEnd - currentTime;
-                    const hrs = Math.floor(remaining / 60), mins = remaining % 60;
-                    return { display: 'Buzz time remaining: ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm' };
+                const ct = now.getHours() * 60 + now.getMinutes();
+                const es = 10 * 60, ee = 12 * 60;
+                if (ct < es) return 'Starting soon';
+                if (ct >= es && ct <= ee) {
+                    const r = ee - ct, hrs = Math.floor(r / 60), mins = r % 60;
+                    return 'Buzz time remaining: ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm';
                 }
-                return { display: 'Event ended' };
+                return 'Event ended';
             };
 
             const submitToSheets = async (eventData) => {
                 const payload = { venue: eventData.venue, month: eventData.month, date: eventData.date, metThreeNew: eventData.scores.blue, oneToOnes: eventData.scores.red, broughtSomeone: eventData.scores.green, inRoom: eventData.inRoom || '', hostingTeam: eventData.team || '', buzzIn: eventData.buzzInCount || 0, buzzOut: eventData.buzzOutCount || 0, totalBuzzers: eventData.buzzerCount || 0, notes: eventData.notes || '', submittedBy: eventData.submittedBy || '' };
                 await fetch(SHEETS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                return true;
             };
 
             const pickVenue = (v) => { setVenue(v); setScreen('month'); };
@@ -235,7 +234,7 @@
             const editEv = (k) => { const ev = events[k]; setEdit(k); setInRoom(ev.inRoom || ''); setTeam(ev.team || ''); setNotes(ev.notes || ''); setScores(ev.scores); setEditScores(false); };
             const saveEdit = () => { const e = { ...events }; e[edit] = { ...events[edit], inRoom, team, notes, scores }; save(e); setEdit(null); setEditScores(false); setInRoom(''); setTeam(''); setNotes(''); };
 
-            // ── SCREENS ───────────────────────────────────────
+            // ── SCREENS ────────────────────────────────────
 
             if (warn) return (
                 <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
@@ -320,19 +319,31 @@
             }
 
             if (screen === 'track') {
-                const timeInfo = getTimeRemaining();
+                const timeDisplay = getTimeRemaining();
                 const config = getVenueConfig(venue);
                 return (
                     <div className="h-screen bg-gray-900 flex flex-col p-3">
 
-                        {/* Top bar: venue/date left, title centre, photo right */}
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="text-left">
-                                <div className="text-sm text-gray-400">{venue} · {config.host}</div>
-                                <div className="text-sm text-gray-500">{month} {date}</div>
+                        {/* Top bar: circle top-left, date+venue centre, host name+photo top-right */}
+                        <div className="flex items-start justify-between mb-2">
+
+                            {/* Just ONE tap circle - top left */}
+                            <div className="pulse-ring flex-shrink-0 flex flex-col items-center justify-center rounded-full border-4 border-yellow-400 text-yellow-400 font-bold text-center" style={{ width: '88px', height: '88px' }}>
+                                <span style={{ fontSize: '0.7rem', lineHeight: '1.2' }}>just</span>
+                                <span style={{ fontSize: '0.65rem', lineHeight: '1.2', letterSpacing: '0.05em' }}>REMEMBER</span>
+                                <span style={{ fontSize: '0.7rem', lineHeight: '1.2' }}><strong>ONE</strong> tap</span>
                             </div>
-                            <h1 className="text-3xl font-bold text-white text-center flex-1 px-2">#LRBuzz 321 tracker</h1>
-                            <div className="flex-shrink-0">
+
+                            {/* Centre: date above title */}
+                            <div className="flex-1 flex flex-col items-center justify-start px-2">
+                                <div className="text-sm text-gray-400 mb-1">{formatBritishDate(date)}</div>
+                                <h1 className="text-3xl font-bold text-white text-center">#LRBuzz 321 tracker</h1>
+                                <div className="text-base text-gray-400 mt-1">{venue}</div>
+                            </div>
+
+                            {/* Host name + photo - top right */}
+                            <div className="flex-shrink-0 flex items-center gap-2">
+                                <span className="text-sm text-gray-300 text-right">{config.host}</span>
                                 {config.photo
                                     ? <img src={config.photo} alt={config.host} className="w-14 h-14 rounded-full object-cover object-top border-2 border-blue-400" />
                                     : <div className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center text-white text-xl font-bold">{config.host[0]}</div>
@@ -345,49 +356,49 @@
                             <h2 className="text-2xl font-semibold text-white">Tap once if you...</h2>
                         </div>
 
-                        {/* Coloured buttons */}
+                        {/* Coloured buttons - label top, number truly centred */}
                         <div className="flex-1 flex gap-3 relative">
                             {emoji && <div className="emoji-pop" style={{ position: 'absolute', top: '-50px', left: emoji.color === 'blue' ? '16.66%' : emoji.color === 'red' ? '50%' : '83.33%', transform: 'translateX(-50%)', zIndex: 50 }}>{emoji.emoji}</div>}
 
                             {/* Blue */}
-                            <button onTouchStart={() => handlePressStart('blue')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('blue')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('blue')} className="flex-1 rounded-lg flex flex-col items-center justify-start pt-5" style={{ backgroundColor: '#00A19A' }}>
-                                <div className="text-center px-3 mb-4">
-                                    <div className="text-xl font-semibold text-white">met <span className="uppercase font-black">THREE</span> new people</div>
+                            <button onTouchStart={() => handlePressStart('blue')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('blue')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('blue')} className="flex-1 rounded-lg relative" style={{ backgroundColor: '#00A19A' }}>
+                                <div className="absolute top-0 left-0 right-0 pt-4 px-3 text-center">
+                                    <span className="text-xl font-semibold text-white">met <strong className="uppercase">THREE</strong> new people</span>
                                 </div>
-                                <div className="text-9xl font-bold text-white">{scores.blue}</div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-9xl font-bold text-white">{scores.blue}</span>
+                                </div>
                             </button>
 
                             {/* Red */}
-                            <button onTouchStart={() => handlePressStart('red')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('red')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('red')} className="flex-1 rounded-lg flex flex-col items-center justify-start pt-5" style={{ backgroundColor: '#D60B52' }}>
-                                <div className="text-center px-3 mb-4">
-                                    <div className="text-xl font-semibold text-white">set or sat <span className="uppercase font-black">TWO</span> 1:1's</div>
+                            <button onTouchStart={() => handlePressStart('red')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('red')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('red')} className="flex-1 rounded-lg relative" style={{ backgroundColor: '#D60B52' }}>
+                                <div className="absolute top-0 left-0 right-0 pt-4 px-3 text-center">
+                                    <span className="text-xl font-semibold text-white">set or sat <strong className="uppercase">TWO</strong> 1:1's</span>
                                 </div>
-                                <div className="text-9xl font-bold text-white">{scores.red}</div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-9xl font-bold text-white">{scores.red}</span>
+                                </div>
                             </button>
 
                             {/* Green */}
-                            <button onTouchStart={() => handlePressStart('green')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('green')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('green')} className="flex-1 rounded-lg flex flex-col items-center justify-start pt-5" style={{ backgroundColor: '#B6BD00' }}>
-                                <div className="text-center px-3 mb-4">
-                                    <div className="text-xl font-semibold text-white">brought <span className="uppercase font-black">someONE</span> along</div>
+                            <button onTouchStart={() => handlePressStart('green')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('green')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('green')} className="flex-1 rounded-lg relative" style={{ backgroundColor: '#B6BD00' }}>
+                                <div className="absolute top-0 left-0 right-0 pt-4 px-3 text-center">
+                                    <span className="text-xl font-semibold text-white">brought some<strong>ONE</strong> along</span>
                                 </div>
-                                <div className="text-9xl font-bold text-white">{scores.green}</div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-9xl font-bold text-white">{scores.green}</span>
+                                </div>
                             </button>
                         </div>
 
                         {/* Time remaining below buttons */}
                         <div className="text-center py-2">
-                            <div className="text-lg text-yellow-400 font-semibold">{timeInfo.display}</div>
+                            <div className="text-lg text-yellow-400 font-semibold">{timeDisplay}</div>
                         </div>
 
-                        {/* Bottom bar: Reset left, Just tap once! centre, Finish right */}
-                        <div className="flex justify-between items-center">
+                        {/* Bottom bar: Reset left, Finish right */}
+                        <div className="flex justify-between">
                             <button onClick={() => { setPinMode('reset'); setPin(''); setPinError(false); setScreen('pin'); }} className="px-8 py-3 bg-red-700 text-white rounded-lg font-semibold">Reset</button>
-
-                            {/* Just tap once! circle */}
-                            <div className="pulse-ring flex items-center justify-center rounded-full border-4 border-yellow-400 text-yellow-400 font-bold text-center" style={{ width: '90px', height: '90px', fontSize: '0.75rem', lineHeight: '1.1' }}>
-                                <span>Just tap<br/>once!</span>
-                            </div>
-
                             <button onClick={() => { setPinMode('finish'); setPin(''); setPinError(false); setScreen('pin'); }} className="px-8 py-3 bg-yellow-600 text-white rounded-lg font-semibold">Finish</button>
                         </div>
 
