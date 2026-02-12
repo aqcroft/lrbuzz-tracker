@@ -8,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="config.js"></script>
     <style>
         @keyframes pop {
             0% { transform: scale(1); opacity: 1; }
@@ -28,7 +29,6 @@
         const { useState, useEffect, useRef } = React;
         const VENUES = ['Hinckley', 'Leicester', 'Loughborough', 'Lutterworth', 'Market Harborough'];
         const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        const PIN = '1232';
         const COOLDOWN = 3000;
         const BUZZER_WINDOW = 5000;
         const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxhP0-3gLV4Ma6SdfY30qXLcy8twnxNpiNiFMjtys_1NwY2-xA5qBEd-ULvf4CFztGikg/exec';
@@ -39,6 +39,7 @@
             const [month, setMonth] = useState('');
             const [date, setDate] = useState('');
             const [pin, setPin] = useState('');
+            const [pinError, setPinError] = useState(false);
             const [pinMode, setPinMode] = useState('');
             const [events, setEvents] = useState({});
             const [scores, setScores] = useState({ blue: 0, red: 0, green: 0 });
@@ -78,6 +79,8 @@
 
             const key = (v, m) => v + '-' + m;
 
+            const getVenueConfig = (v) => VENUE_CONFIG[v] || { host: v, pin: '0000' };
+
             const block = () => {
                 const n = new Date();
                 const t = n.getHours() * 100 + n.getMinutes();
@@ -88,9 +91,7 @@
 
             const getTimeRemaining = () => {
                 const now = new Date();
-                const hours = now.getHours();
-                const minutes = now.getMinutes();
-                const currentTime = hours * 60 + minutes;
+                const currentTime = now.getHours() * 60 + now.getMinutes();
                 const eventStart = 10 * 60;
                 const eventEnd = 12 * 60;
                 if (currentTime < eventStart) {
@@ -121,7 +122,7 @@
                     notes: eventData.notes || '',
                     submittedBy: eventData.submittedBy || ''
                 };
-                const response = await fetch(SHEETS_URL, {
+                await fetch(SHEETS_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
@@ -172,15 +173,18 @@
                 }
                 setPinMode('start');
                 setPin('');
+                setPinError(false);
                 setScreen('pin');
             };
 
             const checkPin = () => {
-                if (pin === PIN) {
+                const config = getVenueConfig(venue);
+                if (pin === config.pin) {
+                    setPinError(false);
                     setScreen(pinMode === 'start' ? 'track' : 'finish');
                     setPin('');
                 } else {
-                    alert('Wrong PIN');
+                    setPinError(true);
                     setPin('');
                 }
             };
@@ -210,18 +214,12 @@
             };
 
             const handlePressStart = (color) => {
-                const timer = setTimeout(() => {
-                    undo(color);
-                    setLongPressTimer(null);
-                }, 2000);
+                const timer = setTimeout(() => { undo(color); setLongPressTimer(null); }, 2000);
                 setLongPressTimer(timer);
             };
 
             const handlePressEnd = () => {
-                if (longPressTimer) {
-                    clearTimeout(longPressTimer);
-                    setLongPressTimer(null);
-                }
+                if (longPressTimer) { clearTimeout(longPressTimer); setLongPressTimer(null); }
             };
 
             const undo = (color) => {
@@ -250,19 +248,16 @@
 
                 const currentBlock = block();
                 if (currentBlock === 'buzzing-in') {
-                    const timeSinceLastBuzzIn = now - lastBuzzInRef.current;
-                    if (timeSinceLastBuzzIn > BUZZER_WINDOW) buzzInCountRef.current++;
+                    if (now - lastBuzzInRef.current > BUZZER_WINDOW) buzzInCountRef.current++;
                     lastBuzzInRef.current = now;
                 } else if (currentBlock === 'buzzing-out') {
-                    const timeSinceLastBuzzOut = now - lastBuzzOutRef.current;
-                    if (timeSinceLastBuzzOut > BUZZER_WINDOW) buzzOutCountRef.current++;
+                    if (now - lastBuzzOutRef.current > BUZZER_WINDOW) buzzOutCountRef.current++;
                     lastBuzzOutRef.current = now;
                 }
 
                 const s = { ...scores };
                 s[color]++;
-                const p = { color: color, time: new Date().toISOString(), block: currentBlock };
-                const ps = [...presses, p];
+                const ps = [...presses, { color, time: new Date().toISOString(), block: currentBlock }];
                 setScores(s);
                 setPresses(ps);
                 showEmoji(color);
@@ -276,11 +271,7 @@
             const finish = async (skip) => {
                 const k = key(venue, month);
                 const eventData = {
-                    venue,
-                    month,
-                    date,
-                    scores,
-                    presses,
+                    venue, month, date, scores, presses,
                     inRoom: skip ? '' : inRoom,
                     team: skip ? '' : team,
                     notes,
@@ -290,13 +281,10 @@
                     buzzInCount: buzzInCountRef.current,
                     buzzOutCount: buzzOutCountRef.current
                 };
-
-                // Always save locally first
                 const e = { ...events };
                 e[k] = eventData;
                 save(e);
 
-                // Then try Google Sheets if not skipping
                 if (!skip) {
                     setSubmitting(true);
                     setSubmitStatus(null);
@@ -307,32 +295,18 @@
                         setSubmitStatus('offline');
                     }
                     setSubmitting(false);
-
-                    // Show result briefly then go home
-                    setTimeout(() => {
-                        resetAndGoHome();
-                    }, 2500);
+                    setTimeout(() => resetAndGoHome(), 2500);
                 } else {
                     resetAndGoHome();
                 }
             };
 
             const resetAndGoHome = () => {
-                setVenue('');
-                setMonth('');
-                setScores({ blue: 0, red: 0, green: 0 });
-                setPresses([]);
-                setInRoom('');
-                setTeam('');
-                setNotes('');
-                setSubmittedBy('');
+                setVenue(''); setMonth(''); setScores({ blue: 0, red: 0, green: 0 });
+                setPresses([]); setInRoom(''); setTeam(''); setNotes(''); setSubmittedBy('');
                 setSubmitStatus(null);
-                buzzerCountRef.current = 0;
-                buzzInCountRef.current = 0;
-                buzzOutCountRef.current = 0;
-                lastInteractionRef.current = 0;
-                lastBuzzInRef.current = 0;
-                lastBuzzOutRef.current = 0;
+                buzzerCountRef.current = 0; buzzInCountRef.current = 0; buzzOutCountRef.current = 0;
+                lastInteractionRef.current = 0; lastBuzzInRef.current = 0; lastBuzzOutRef.current = 0;
                 setScreen('venue');
             };
 
@@ -360,24 +334,18 @@
 
             const editEv = (k) => {
                 const ev = events[k];
-                setEdit(k);
-                setInRoom(ev.inRoom || '');
-                setTeam(ev.team || '');
-                setNotes(ev.notes || '');
-                setScores(ev.scores);
-                setEditScores(false);
+                setEdit(k); setInRoom(ev.inRoom || ''); setTeam(ev.team || '');
+                setNotes(ev.notes || ''); setScores(ev.scores); setEditScores(false);
             };
 
             const saveEdit = () => {
                 const e = { ...events };
                 e[edit] = { ...events[edit], inRoom, team, notes, scores };
                 save(e);
-                setEdit(null);
-                setEditScores(false);
-                setInRoom('');
-                setTeam('');
-                setNotes('');
+                setEdit(null); setEditScores(false); setInRoom(''); setTeam(''); setNotes('');
             };
+
+            // ── SCREENS ──────────────────────────────────────────────
 
             if (warn) {
                 return (
@@ -398,9 +366,19 @@
                 return (
                     <div className="min-h-screen bg-gray-900 p-8">
                         <div className="max-w-4xl mx-auto">
-                            <h1 className="text-4xl font-bold text-white mb-8 text-center">LR Buzz 321 Tracker</h1>
+                            <h1 className="text-4xl font-bold text-white mb-2 text-center">LR Buzz 321 Tracker</h1>
+                            <p className="text-gray-400 text-center mb-8">Select your venue to begin</p>
                             <div className="flex flex-col gap-4 mb-8">
-                                {VENUES.map(v => <button key={v} onClick={() => pickVenue(v)} className="w-full p-8 bg-blue-600 text-white rounded-lg text-2xl font-semibold hover:bg-blue-700">{v}</button>)}
+                                {VENUES.map(v => {
+                                    const config = getVenueConfig(v);
+                                    return (
+                                        <button key={v} onClick={() => pickVenue(v)}
+                                            className="w-full p-6 bg-blue-600 text-white rounded-lg text-2xl font-semibold hover:bg-blue-700 flex justify-between items-center">
+                                            <span>{v}</span>
+                                            <span className="text-lg font-normal opacity-75">Host: {config.host}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                             <button onClick={() => setScreen('review')} className="w-full p-6 bg-green-600 text-white rounded-lg text-xl font-semibold hover:bg-green-700">Review Historical Data</button>
                         </div>
@@ -409,17 +387,24 @@
             }
 
             if (screen === 'month') {
+                const config = getVenueConfig(venue);
                 return (
                     <div className="min-h-screen bg-gray-900 p-8">
                         <div className="max-w-4xl mx-auto">
                             <button onClick={() => setScreen('venue')} className="mb-6 text-white">← Back</button>
-                            <h1 className="text-4xl font-bold text-white mb-4 text-center">{venue}</h1>
-                            <h2 className="text-2xl text-white mb-8 text-center">Select Month</h2>
+                            <h1 className="text-4xl font-bold text-white mb-1 text-center">{venue}</h1>
+                            <p className="text-blue-300 text-xl text-center mb-8">Welcome, {config.host}!</p>
+                            <h2 className="text-2xl text-white mb-6 text-center">Select Month</h2>
                             <div className="grid grid-cols-3 gap-4">
                                 {MONTHS.map(m => {
                                     const k = key(venue, m);
                                     const has = events[k] && events[k].done;
-                                    return <button key={m} onClick={() => pickMonth(m)} className={'p-6 rounded-lg text-xl font-semibold ' + (has ? 'bg-yellow-600 text-white' : 'bg-blue-600 text-white')}>{m}{has && <div className="text-sm mt-1">✓</div>}</button>;
+                                    return (
+                                        <button key={m} onClick={() => pickMonth(m)}
+                                            className={'p-6 rounded-lg text-xl font-semibold ' + (has ? 'bg-yellow-600 text-white' : 'bg-blue-600 text-white')}>
+                                            {m}{has && <div className="text-sm mt-1">✓</div>}
+                                        </button>
+                                    );
                                 })}
                             </div>
                         </div>
@@ -428,11 +413,28 @@
             }
 
             if (screen === 'pin') {
+                const config = getVenueConfig(venue);
                 return (
                     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
                         <div className="bg-white rounded-lg p-8 max-w-md w-full">
-                            <h2 className="text-3xl font-bold mb-6 text-center">{pinMode === 'start' ? 'Enter PIN to Start' : 'Enter PIN to Finish'}</h2>
-                            <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && checkPin()} className="w-full p-4 border-2 rounded-lg text-2xl text-center mb-6" placeholder="****" maxLength="4" autoFocus />
+                            <h2 className="text-2xl font-bold mb-1 text-center">
+                                {pinMode === 'start' ? 'Hello, ' + config.host + '!' : 'Nearly done, ' + config.host + '!'}
+                            </h2>
+                            <p className="text-gray-500 text-center mb-6">
+                                {pinMode === 'start' ? 'Enter your PIN for ' + venue : 'Enter your PIN to finish'}
+                            </p>
+                            <input
+                                type="password"
+                                value={pin}
+                                onChange={(e) => { setPin(e.target.value); setPinError(false); }}
+                                onKeyPress={(e) => e.key === 'Enter' && checkPin()}
+                                className={'w-full p-4 border-2 rounded-lg text-2xl text-center mb-2 ' + (pinError ? 'border-red-500' : 'border-gray-300')}
+                                placeholder="****"
+                                maxLength="4"
+                                autoFocus
+                            />
+                            {pinError && <p className="text-red-500 text-center mb-4">Incorrect PIN — try again</p>}
+                            {!pinError && <div className="mb-4"></div>}
                             <div className="flex gap-4">
                                 <button onClick={() => setScreen(pinMode === 'start' ? 'month' : 'track')} className="flex-1 p-4 bg-gray-300 rounded-lg font-semibold">Cancel</button>
                                 <button onClick={checkPin} className="flex-1 p-4 bg-blue-600 text-white rounded-lg font-semibold">Submit</button>
@@ -444,12 +446,13 @@
 
             if (screen === 'track') {
                 const timeInfo = getTimeRemaining();
+                const config = getVenueConfig(venue);
                 return (
                     <div className="h-screen bg-gray-900 flex flex-col p-4">
                         <div className="text-center mb-4">
                             <h1 className="text-3xl font-bold text-white mb-1">#LRBuzz 321 tracker</h1>
                             <h2 className="text-2xl font-semibold text-white mb-2">Tap once if you...</h2>
-                            <div className="text-xl text-gray-300 mb-1">{venue} - {month} {date}</div>
+                            <div className="text-xl text-gray-300 mb-1">{venue} · {config.host} · {month} {date}</div>
                             <div className="text-lg text-yellow-400 font-semibold">{timeInfo.display}</div>
                         </div>
                         <div className="flex-1 flex gap-4 relative">
@@ -472,7 +475,7 @@
                                 <div className="text-2xl font-semibold text-white">brought some1 along</div>
                             </button>
                         </div>
-                        <button onClick={() => { setPinMode('finish'); setPin(''); setScreen('pin'); }} className="mt-4 px-8 py-3 bg-yellow-600 text-white rounded-lg font-semibold self-end">Finish</button>
+                        <button onClick={() => { setPinMode('finish'); setPin(''); setPinError(false); setScreen('pin'); }} className="mt-4 px-8 py-3 bg-yellow-600 text-white rounded-lg font-semibold self-end">Finish</button>
                     </div>
                 );
             }
@@ -489,7 +492,6 @@
                         </div>
                     );
                 }
-
                 if (submitStatus === 'success') {
                     return (
                         <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
@@ -501,7 +503,6 @@
                         </div>
                     );
                 }
-
                 if (submitStatus === 'offline') {
                     return (
                         <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
@@ -513,7 +514,6 @@
                         </div>
                     );
                 }
-
                 return (
                     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
                         <div className="bg-white rounded-lg p-8 max-w-md w-full">
