@@ -135,8 +135,28 @@
 
             const checkPin = () => {
                 const config = getVenueConfig(venue);
-                if (pin === config.pin) { setPinError(false); setScreen(pinMode === 'start' ? 'track' : 'finish'); setPin(''); }
-                else { setPinError(true); setPin(''); }
+                if (pin === config.pin) {
+                    setPinError(false);
+                    if (pinMode === 'start') setScreen('track');
+                    else if (pinMode === 'finish') setScreen('finish');
+                    else if (pinMode === 'reset') {
+                        setWarn({ msg: 'Reset all scores for ' + venue + ' - ' + month + ' to zero? This cannot be undone.', ok: () => doReset() });
+                    }
+                    setPin('');
+                } else { setPinError(true); setPin(''); }
+            };
+
+            const doReset = () => {
+                setScores({ blue: 0, red: 0, green: 0 });
+                setPresses([]);
+                buzzerCountRef.current = 0; buzzInCountRef.current = 0; buzzOutCountRef.current = 0;
+                lastInteractionRef.current = 0; lastBuzzInRef.current = 0; lastBuzzOutRef.current = 0;
+                const k = key(venue, month);
+                const e = { ...events };
+                e[k] = { venue, month, date, scores: { blue: 0, red: 0, green: 0 }, presses: [], notes, inRoom: '', team: '', done: false, buzzerCount: 0, buzzInCount: 0, buzzOutCount: 0 };
+                save(e);
+                setWarn(null);
+                setScreen('track');
             };
 
             const showEmoji = (color) => {
@@ -227,13 +247,15 @@
             const editEv = (k) => { const ev = events[k]; setEdit(k); setInRoom(ev.inRoom || ''); setTeam(ev.team || ''); setNotes(ev.notes || ''); setScores(ev.scores); setEditScores(false); };
             const saveEdit = () => { const e = { ...events }; e[edit] = { ...events[edit], inRoom, team, notes, scores }; save(e); setEdit(null); setEditScores(false); setInRoom(''); setTeam(''); setNotes(''); };
 
+            // ── SCREENS ──────────────────────────────────────────────
+
             if (warn) return (
                 <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
                     <div className="bg-white rounded-lg p-8 max-w-md w-full">
                         <h2 className="text-2xl font-bold mb-4">Warning</h2>
                         <p className="mb-6">{warn.msg}</p>
                         <div className="flex gap-4">
-                            <button onClick={() => setWarn(null)} className="flex-1 p-3 bg-gray-300 rounded-lg font-semibold">No</button>
+                            <button onClick={() => { setWarn(null); setScreen('track'); }} className="flex-1 p-3 bg-gray-300 rounded-lg font-semibold">No</button>
                             <button onClick={warn.ok} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-semibold">Yes</button>
                         </div>
                     </div>
@@ -289,17 +311,19 @@
 
             if (screen === 'pin') {
                 const config = getVenueConfig(venue);
+                const titles = { start: 'Hello, ' + config.host + '!', finish: 'Nearly done, ' + config.host + '!', reset: 'Reset scores, ' + config.host + '?' };
+                const subtitles = { start: 'Enter your PIN for ' + venue, finish: 'Enter your PIN to finish', reset: 'Enter your PIN to confirm reset' };
                 return (
                     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
                         <div className="bg-white rounded-lg p-8 max-w-md w-full">
                             {config.photo && <div className="flex justify-center mb-4"><img src={config.photo} alt={config.host} className="w-20 h-20 rounded-full object-cover object-top border-4 border-blue-400" /></div>}
-                            <h2 className="text-2xl font-bold mb-1 text-center">{pinMode === 'start' ? 'Hello, ' + config.host + '!' : 'Nearly done, ' + config.host + '!'}</h2>
-                            <p className="text-gray-500 text-center mb-6">{pinMode === 'start' ? 'Enter your PIN for ' + venue : 'Enter your PIN to finish'}</p>
+                            <h2 className="text-2xl font-bold mb-1 text-center">{titles[pinMode]}</h2>
+                            <p className="text-gray-500 text-center mb-6">{subtitles[pinMode]}</p>
                             <input type="password" value={pin} onChange={(e) => { setPin(e.target.value); setPinError(false); }} onKeyPress={(e) => e.key === 'Enter' && checkPin()} className={'w-full p-4 border-2 rounded-lg text-2xl text-center mb-2 ' + (pinError ? 'border-red-500' : 'border-gray-300')} placeholder="****" maxLength="4" autoFocus />
                             {pinError && <p className="text-red-500 text-center mb-4">Incorrect PIN — try again</p>}
                             {!pinError && <div className="mb-4"></div>}
                             <div className="flex gap-4">
-                                <button onClick={() => setScreen(pinMode === 'start' ? 'month' : 'track')} className="flex-1 p-4 bg-gray-300 rounded-lg font-semibold">Cancel</button>
+                                <button onClick={() => { setPin(''); setPinError(false); setScreen(pinMode === 'start' ? 'month' : 'track'); }} className="flex-1 p-4 bg-gray-300 rounded-lg font-semibold">Cancel</button>
                                 <button onClick={checkPin} className="flex-1 p-4 bg-blue-600 text-white rounded-lg font-semibold">Submit</button>
                             </div>
                         </div>
@@ -308,16 +332,33 @@
             }
 
             if (screen === 'track') {
-                const timeInfo = getTimeRemaining(); const config = getVenueConfig(venue);
+                const timeInfo = getTimeRemaining();
+                const config = getVenueConfig(venue);
                 return (
-                    <div className="h-screen bg-gray-900 flex flex-col p-4">
-                        <div className="text-center mb-4">
-                            <h1 className="text-3xl font-bold text-white mb-1">#LRBuzz 321 tracker</h1>
-                            <h2 className="text-2xl font-semibold text-white mb-2">Tap once if you...</h2>
-                            <div className="text-xl text-gray-300 mb-1">{venue} · {config.host} · {month} {date}</div>
-                            <div className="text-lg text-yellow-400 font-semibold">{timeInfo.display}</div>
+                    <div className="h-screen bg-gray-900 flex flex-col p-3">
+
+                        {/* Top bar: venue/date left, title centre, photo right */}
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="text-left">
+                                <div className="text-sm text-gray-400">{venue} · {config.host}</div>
+                                <div className="text-sm text-gray-500">{month} {date}</div>
+                            </div>
+                            <h1 className="text-3xl font-bold text-white text-center flex-1 px-2">#LRBuzz 321 tracker</h1>
+                            <div className="flex-shrink-0">
+                                {config.photo
+                                    ? <img src={config.photo} alt={config.host} className="w-14 h-14 rounded-full object-cover object-top border-2 border-blue-400" />
+                                    : <div className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center text-white text-xl font-bold">{config.host[0]}</div>
+                                }
+                            </div>
                         </div>
-                        <div className="flex-1 flex gap-4 relative">
+
+                        {/* Tap instruction directly above buttons */}
+                        <div className="text-center mb-2">
+                            <h2 className="text-2xl font-semibold text-white">Tap once if you...</h2>
+                        </div>
+
+                        {/* Coloured buttons */}
+                        <div className="flex-1 flex gap-3 relative">
                             {emoji && <div className="emoji-pop" style={{ position: 'absolute', top: '-60px', left: emoji.color === 'blue' ? '16.66%' : emoji.color === 'red' ? '50%' : '83.33%', transform: 'translateX(-50%)', zIndex: 50 }}>{emoji.emoji}</div>}
                             <button onTouchStart={() => handlePressStart('blue')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('blue')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('blue')} className="flex-1 rounded-lg flex flex-col items-center justify-center" style={{ backgroundColor: '#00A19A' }}>
                                 <div className="text-9xl font-bold text-white mb-4">{scores.blue}</div>
@@ -333,7 +374,18 @@
                                 <div className="text-2xl font-semibold text-white">brought some1 along</div>
                             </button>
                         </div>
-                        <button onClick={() => { setPinMode('finish'); setPin(''); setPinError(false); setScreen('pin'); }} className="mt-4 px-8 py-3 bg-yellow-600 text-white rounded-lg font-semibold self-end">Finish</button>
+
+                        {/* Time remaining below buttons */}
+                        <div className="text-center py-2">
+                            <div className="text-lg text-yellow-400 font-semibold">{timeInfo.display}</div>
+                        </div>
+
+                        {/* Bottom bar: Reset left, Finish right */}
+                        <div className="flex justify-between">
+                            <button onClick={() => { setPinMode('reset'); setPin(''); setPinError(false); setScreen('pin'); }} className="px-8 py-3 bg-red-700 text-white rounded-lg font-semibold">Reset</button>
+                            <button onClick={() => { setPinMode('finish'); setPin(''); setPinError(false); setScreen('pin'); }} className="px-8 py-3 bg-yellow-600 text-white rounded-lg font-semibold">Finish</button>
+                        </div>
+
                     </div>
                 );
             }
