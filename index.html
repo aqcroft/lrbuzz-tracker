@@ -31,6 +31,7 @@
         const PIN = '1232';
         const COOLDOWN = 3000;
         const BUZZER_WINDOW = 5000;
+        const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxhP0-3gLV4Ma6SdfY30qXLcy8twnxNpiNiFMjtys_1NwY2-xA5qBEd-ULvf4CFztGikg/exec';
 
         function App() {
             const [screen, setScreen] = useState('venue');
@@ -45,12 +46,15 @@
             const [inRoom, setInRoom] = useState('');
             const [team, setTeam] = useState('');
             const [notes, setNotes] = useState('');
+            const [submittedBy, setSubmittedBy] = useState('');
             const [warn, setWarn] = useState(null);
             const [edit, setEdit] = useState(null);
             const [editScores, setEditScores] = useState(false);
             const [lastPressAttempt, setLastPressAttempt] = useState({ blue: 0, red: 0, green: 0 });
             const [emoji, setEmoji] = useState(null);
             const [longPressTimer, setLongPressTimer] = useState(null);
+            const [submitting, setSubmitting] = useState(false);
+            const [submitStatus, setSubmitStatus] = useState(null);
             const lastInteractionRef = useRef(0);
             const buzzerCountRef = useRef(0);
             const buzzInCountRef = useRef(0);
@@ -87,10 +91,8 @@
                 const hours = now.getHours();
                 const minutes = now.getMinutes();
                 const currentTime = hours * 60 + minutes;
-                
                 const eventStart = 10 * 60;
                 const eventEnd = 12 * 60;
-
                 if (currentTime < eventStart) {
                     return { phase: 'starting', display: 'Starting soon' };
                 } else if (currentTime >= eventStart && currentTime <= eventEnd) {
@@ -101,6 +103,31 @@
                 } else {
                     return { phase: 'ended', display: 'Event ended' };
                 }
+            };
+
+            const submitToSheets = async (eventData) => {
+                const payload = {
+                    venue: eventData.venue,
+                    month: eventData.month,
+                    date: eventData.date,
+                    metThreeNew: eventData.scores.blue,
+                    oneToOnes: eventData.scores.red,
+                    broughtSomeone: eventData.scores.green,
+                    inRoom: eventData.inRoom || '',
+                    hostingTeam: eventData.team || '',
+                    buzzIn: eventData.buzzInCount || 0,
+                    buzzOut: eventData.buzzOutCount || 0,
+                    totalBuzzers: eventData.buzzerCount || 0,
+                    notes: eventData.notes || '',
+                    submittedBy: eventData.submittedBy || ''
+                };
+                const response = await fetch(SHEETS_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                return true;
             };
 
             const pickVenue = (v) => { setVenue(v); setScreen('month'); };
@@ -129,6 +156,7 @@
                     setPresses(ex.presses || []);
                     setDate(ex.date);
                     setNotes(ex.notes || '');
+                    setSubmittedBy(ex.submittedBy || '');
                     buzzerCountRef.current = ex.buzzerCount || 0;
                     buzzInCountRef.current = ex.buzzInCount || 0;
                     buzzOutCountRef.current = ex.buzzOutCount || 0;
@@ -137,6 +165,7 @@
                     setScores({ blue: 0, red: 0, green: 0 });
                     setPresses([]);
                     setNotes('');
+                    setSubmittedBy('');
                     buzzerCountRef.current = 0;
                     buzzInCountRef.current = 0;
                     buzzOutCountRef.current = 0;
@@ -168,22 +197,16 @@
                     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     const oscillator = audioContext.createOscillator();
                     const gainNode = audioContext.createGain();
-                    
                     oscillator.connect(gainNode);
                     gainNode.connect(audioContext.destination);
-                    
                     const frequencies = { blue: 523.25, red: 659.25, green: 783.99 };
                     oscillator.frequency.value = frequencies[color];
                     oscillator.type = 'sine';
-                    
                     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
                     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-                    
                     oscillator.start(audioContext.currentTime);
                     oscillator.stop(audioContext.currentTime + 0.3);
-                } catch (e) {
-                    // Silently fail if audio not supported
-                }
+                } catch (e) {}
             };
 
             const handlePressStart = (color) => {
@@ -218,31 +241,21 @@
             const press = (color) => {
                 const now = Date.now();
                 const timeSinceLastAttempt = now - lastPressAttempt[color];
-                
                 setLastPressAttempt({ ...lastPressAttempt, [color]: now });
-                
-                if (timeSinceLastAttempt < COOLDOWN) {
-                    return;
-                }
+                if (timeSinceLastAttempt < COOLDOWN) return;
 
                 const timeSinceLastInteraction = now - lastInteractionRef.current;
-                if (timeSinceLastInteraction > BUZZER_WINDOW) {
-                    buzzerCountRef.current++;
-                }
+                if (timeSinceLastInteraction > BUZZER_WINDOW) buzzerCountRef.current++;
                 lastInteractionRef.current = now;
 
                 const currentBlock = block();
                 if (currentBlock === 'buzzing-in') {
                     const timeSinceLastBuzzIn = now - lastBuzzInRef.current;
-                    if (timeSinceLastBuzzIn > BUZZER_WINDOW) {
-                        buzzInCountRef.current++;
-                    }
+                    if (timeSinceLastBuzzIn > BUZZER_WINDOW) buzzInCountRef.current++;
                     lastBuzzInRef.current = now;
                 } else if (currentBlock === 'buzzing-out') {
                     const timeSinceLastBuzzOut = now - lastBuzzOutRef.current;
-                    if (timeSinceLastBuzzOut > BUZZER_WINDOW) {
-                        buzzOutCountRef.current++;
-                    }
+                    if (timeSinceLastBuzzOut > BUZZER_WINDOW) buzzOutCountRef.current++;
                     lastBuzzOutRef.current = now;
                 }
 
@@ -260,24 +273,51 @@
                 save(e);
             };
 
-            const finish = (skip) => {
+            const finish = async (skip) => {
                 const k = key(venue, month);
-                const e = { ...events };
-                e[k] = { 
-                    venue, 
-                    month, 
-                    date, 
-                    scores, 
-                    presses, 
-                    inRoom: skip ? '' : inRoom, 
-                    team: skip ? '' : team, 
-                    notes, 
+                const eventData = {
+                    venue,
+                    month,
+                    date,
+                    scores,
+                    presses,
+                    inRoom: skip ? '' : inRoom,
+                    team: skip ? '' : team,
+                    notes,
+                    submittedBy: skip ? '' : submittedBy,
                     done: true,
                     buzzerCount: buzzerCountRef.current,
                     buzzInCount: buzzInCountRef.current,
                     buzzOutCount: buzzOutCountRef.current
                 };
+
+                // Always save locally first
+                const e = { ...events };
+                e[k] = eventData;
                 save(e);
+
+                // Then try Google Sheets if not skipping
+                if (!skip) {
+                    setSubmitting(true);
+                    setSubmitStatus(null);
+                    try {
+                        await submitToSheets(eventData);
+                        setSubmitStatus('success');
+                    } catch (err) {
+                        setSubmitStatus('offline');
+                    }
+                    setSubmitting(false);
+
+                    // Show result briefly then go home
+                    setTimeout(() => {
+                        resetAndGoHome();
+                    }, 2500);
+                } else {
+                    resetAndGoHome();
+                }
+            };
+
+            const resetAndGoHome = () => {
                 setVenue('');
                 setMonth('');
                 setScores({ blue: 0, red: 0, green: 0 });
@@ -285,6 +325,8 @@
                 setInRoom('');
                 setTeam('');
                 setNotes('');
+                setSubmittedBy('');
+                setSubmitStatus(null);
                 buzzerCountRef.current = 0;
                 buzzInCountRef.current = 0;
                 buzzOutCountRef.current = 0;
@@ -412,56 +454,20 @@
                         </div>
                         <div className="flex-1 flex gap-4 relative">
                             {emoji && (
-                                <div 
-                                    className="emoji-pop" 
-                                    style={{ 
-                                        position: 'absolute',
-                                        top: '-60px',
-                                        left: emoji.color === 'blue' ? '16.66%' : emoji.color === 'red' ? '50%' : '83.33%',
-                                        transform: 'translateX(-50%)',
-                                        zIndex: 50
-                                    }}
-                                >
+                                <div className="emoji-pop" style={{ position: 'absolute', top: '-60px', left: emoji.color === 'blue' ? '16.66%' : emoji.color === 'red' ? '50%' : '83.33%', transform: 'translateX(-50%)', zIndex: 50 }}>
                                     {emoji.emoji}
                                 </div>
                             )}
-                            <button 
-                                onTouchStart={() => handlePressStart('blue')}
-                                onTouchEnd={handlePressEnd}
-                                onMouseDown={() => handlePressStart('blue')}
-                                onMouseUp={handlePressEnd}
-                                onMouseLeave={handlePressEnd}
-                                onClick={() => press('blue')} 
-                                className="flex-1 rounded-lg flex flex-col items-center justify-center"
-                                style={{ backgroundColor: '#00A19A' }}
-                            >
+                            <button onTouchStart={() => handlePressStart('blue')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('blue')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('blue')} className="flex-1 rounded-lg flex flex-col items-center justify-center" style={{ backgroundColor: '#00A19A' }}>
                                 <div className="text-9xl font-bold text-white mb-4">{scores.blue}</div>
                                 <div className="text-2xl font-semibold text-white">met 3 new people</div>
                             </button>
-                            <button 
-                                onTouchStart={() => handlePressStart('red')}
-                                onTouchEnd={handlePressEnd}
-                                onMouseDown={() => handlePressStart('red')}
-                                onMouseUp={handlePressEnd}
-                                onMouseLeave={handlePressEnd}
-                                onClick={() => press('red')} 
-                                className="flex-1 rounded-lg flex flex-col items-center justify-center"
-                                style={{ backgroundColor: '#D60B52' }}
-                            >
+                            <button onTouchStart={() => handlePressStart('red')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('red')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('red')} className="flex-1 rounded-lg flex flex-col items-center justify-center" style={{ backgroundColor: '#D60B52' }}>
                                 <div className="text-9xl font-bold text-white mb-4">{scores.red}</div>
                                 <div className="text-2xl font-semibold text-white">one 2 one's</div>
                                 <div className="text-xl text-white">(set or sat)</div>
                             </button>
-                            <button 
-                                onTouchStart={() => handlePressStart('green')}
-                                onTouchEnd={handlePressEnd}
-                                onMouseDown={() => handlePressStart('green')}
-                                onMouseUp={handlePressEnd}
-                                onMouseLeave={handlePressEnd}
-                                onClick={() => press('green')} 
-                                className="flex-1 rounded-lg flex flex-col items-center justify-center"
-                                style={{ backgroundColor: '#B6BD00' }}
-                            >
+                            <button onTouchStart={() => handlePressStart('green')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('green')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('green')} className="flex-1 rounded-lg flex flex-col items-center justify-center" style={{ backgroundColor: '#B6BD00' }}>
                                 <div className="text-9xl font-bold text-white mb-4">{scores.green}</div>
                                 <div className="text-2xl font-semibold text-white">brought some1 along</div>
                             </button>
@@ -472,6 +478,42 @@
             }
 
             if (screen === 'finish') {
+                if (submitting) {
+                    return (
+                        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
+                            <div className="bg-white rounded-lg p-8 max-w-md w-full text-center">
+                                <div className="text-5xl mb-4">📤</div>
+                                <h2 className="text-2xl font-bold mb-2">Sending to Google Sheets...</h2>
+                                <p className="text-gray-500">Saved locally. Uploading now.</p>
+                            </div>
+                        </div>
+                    );
+                }
+
+                if (submitStatus === 'success') {
+                    return (
+                        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
+                            <div className="bg-white rounded-lg p-8 max-w-md w-full text-center">
+                                <div className="text-5xl mb-4">✅</div>
+                                <h2 className="text-2xl font-bold mb-2">Submitted!</h2>
+                                <p className="text-gray-500">Data saved locally and sent to Google Sheets.</p>
+                            </div>
+                        </div>
+                    );
+                }
+
+                if (submitStatus === 'offline') {
+                    return (
+                        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
+                            <div className="bg-white rounded-lg p-8 max-w-md w-full text-center">
+                                <div className="text-5xl mb-4">📵</div>
+                                <h2 className="text-2xl font-bold mb-2">Saved Locally</h2>
+                                <p className="text-gray-500">No connection to Google Sheets. Data is safe on this device — use CSV export to submit manually.</p>
+                            </div>
+                        </div>
+                    );
+                }
+
                 return (
                     <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
                         <div className="bg-white rounded-lg p-8 max-w-md w-full">
@@ -491,13 +533,17 @@
                                 <label className="block font-semibold mb-2">Hosting Team</label>
                                 <input type="number" value={team} onChange={(e) => setTeam(e.target.value)} className="w-full p-3 border-2 rounded-lg" />
                             </div>
+                            <div className="mb-4">
+                                <label className="block font-semibold mb-2">Your Name</label>
+                                <input type="text" value={submittedBy} onChange={(e) => setSubmittedBy(e.target.value)} className="w-full p-3 border-2 rounded-lg" placeholder="Who ran this event?" />
+                            </div>
                             <div className="mb-6">
                                 <label className="block font-semibold mb-2">Notes</label>
                                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 rounded-lg" rows="3"></textarea>
                             </div>
                             <div className="flex gap-4">
                                 <button onClick={() => finish(true)} className="flex-1 p-4 bg-gray-300 rounded-lg font-semibold">Later</button>
-                                <button onClick={() => finish(false)} className="flex-1 p-4 bg-green-600 text-white rounded-lg font-semibold">Save</button>
+                                <button onClick={() => finish(false)} className="flex-1 p-4 bg-green-600 text-white rounded-lg font-semibold">Save & Submit</button>
                             </div>
                         </div>
                     </div>
@@ -572,7 +618,6 @@
                                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
                                     <div className="bg-white rounded-lg p-8 max-w-md w-full max-h-screen overflow-y-auto">
                                         <h3 className="text-2xl font-bold mb-4">Edit Event</h3>
-                                        
                                         {!editScores ? (
                                             <>
                                                 <div className="mb-4">
@@ -606,7 +651,6 @@
                                                 <button onClick={() => setEditScores(false)} className="w-full p-3 mb-4 bg-gray-600 text-white rounded-lg font-semibold">Back to Host Fields</button>
                                             </>
                                         )}
-                                        
                                         <div className="flex gap-4">
                                             <button onClick={() => { setEdit(null); setEditScores(false); setInRoom(''); setTeam(''); setNotes(''); }} className="flex-1 p-3 bg-gray-300 rounded-lg font-semibold">Cancel</button>
                                             <button onClick={saveEdit} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
