@@ -21,6 +21,14 @@
             font-size: 4rem;
             pointer-events: none;
         }
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.08); opacity: 0.85; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pulse-ring {
+            animation: pulse-ring 2s ease-in-out infinite;
+        }
     </style>
 </head>
 <body>
@@ -71,18 +79,14 @@
             }, []);
 
             const save = (e) => {
-                try {
-                    localStorage.setItem('lrbuzz', JSON.stringify(e));
-                    setEvents(e);
-                } catch (err) {}
+                try { localStorage.setItem('lrbuzz', JSON.stringify(e)); setEvents(e); } catch (err) {}
             };
 
             const key = (v, m) => v + '-' + m;
             const getVenueConfig = (v) => VENUE_CONFIG[v] || { host: v, pin: '0000', photo: '' };
 
             const block = () => {
-                const n = new Date();
-                const t = n.getHours() * 100 + n.getMinutes();
+                const t = new Date().getHours() * 100 + new Date().getMinutes();
                 if (t >= 1000 && t < 1045) return 'buzzing-in';
                 if (t >= 1115 && t <= 1200) return 'buzzing-out';
                 return 'outside-hours';
@@ -91,16 +95,14 @@
             const getTimeRemaining = () => {
                 const now = new Date();
                 const currentTime = now.getHours() * 60 + now.getMinutes();
-                const eventStart = 10 * 60;
-                const eventEnd = 12 * 60;
-                if (currentTime < eventStart) return { phase: 'starting', display: 'Starting soon' };
+                const eventStart = 10 * 60, eventEnd = 12 * 60;
+                if (currentTime < eventStart) return { display: 'Starting soon' };
                 if (currentTime >= eventStart && currentTime <= eventEnd) {
                     const remaining = eventEnd - currentTime;
-                    const hrs = Math.floor(remaining / 60);
-                    const mins = remaining % 60;
-                    return { phase: 'active', display: 'Buzz time remaining: ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm' };
+                    const hrs = Math.floor(remaining / 60), mins = remaining % 60;
+                    return { display: 'Buzz time remaining: ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm' };
                 }
-                return { phase: 'ended', display: 'Event ended' };
+                return { display: 'Event ended' };
             };
 
             const submitToSheets = async (eventData) => {
@@ -112,10 +114,8 @@
             const pickVenue = (v) => { setVenue(v); setScreen('month'); };
 
             const pickMonth = (m) => {
-                const k = key(venue, m);
-                const ex = events[k];
-                const curr = new Date().getMonth();
-                const sel = MONTHS.indexOf(m);
+                const k = key(venue, m), ex = events[k];
+                const curr = new Date().getMonth(), sel = MONTHS.indexOf(m);
                 if (sel > curr) { setWarn({ msg: 'Selecting ' + m + ' (future). Continue?', ok: () => go(m, ex) }); return; }
                 if (ex && ex.done) { setWarn({ msg: 'Data exists for ' + m + '. Overwrite?', ok: () => go(m, ex) }); return; }
                 go(m, ex);
@@ -136,75 +136,63 @@
             const checkPin = () => {
                 const config = getVenueConfig(venue);
                 if (pin === config.pin) {
-                    setPinError(false);
+                    setPinError(false); setPin('');
                     if (pinMode === 'start') setScreen('track');
                     else if (pinMode === 'finish') setScreen('finish');
-                    else if (pinMode === 'reset') {
-                        setWarn({ msg: 'Reset all scores for ' + venue + ' - ' + month + ' to zero? This cannot be undone.', ok: () => doReset() });
-                    }
-                    setPin('');
+                    else if (pinMode === 'reset') setWarn({ msg: 'Reset all scores for ' + venue + ' — ' + month + ' to zero? This cannot be undone.', ok: () => doReset() });
                 } else { setPinError(true); setPin(''); }
             };
 
             const doReset = () => {
-                setScores({ blue: 0, red: 0, green: 0 });
-                setPresses([]);
+                setScores({ blue: 0, red: 0, green: 0 }); setPresses([]);
                 buzzerCountRef.current = 0; buzzInCountRef.current = 0; buzzOutCountRef.current = 0;
                 lastInteractionRef.current = 0; lastBuzzInRef.current = 0; lastBuzzOutRef.current = 0;
-                const k = key(venue, month);
-                const e = { ...events };
+                const k = key(venue, month); const e = { ...events };
                 e[k] = { venue, month, date, scores: { blue: 0, red: 0, green: 0 }, presses: [], notes, inRoom: '', team: '', done: false, buzzerCount: 0, buzzInCount: 0, buzzOutCount: 0 };
-                save(e);
-                setWarn(null);
-                setScreen('track');
+                save(e); setWarn(null); setScreen('track');
             };
 
             const showEmoji = (color) => {
                 const emojis = { blue: '🎉', red: '🥳', green: '🙏' };
-                setEmoji({ emoji: emojis[color], color });
-                setTimeout(() => setEmoji(null), 600);
-                playSound(color);
+                setEmoji({ emoji: emojis[color], color }); setTimeout(() => setEmoji(null), 600); playSound(color);
             };
 
             const playSound = (color) => {
                 try {
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
-                    oscillator.connect(gainNode); gainNode.connect(audioContext.destination);
-                    const frequencies = { blue: 523.25, red: 659.25, green: 783.99 };
-                    oscillator.frequency.value = frequencies[color]; oscillator.type = 'sine';
-                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-                    oscillator.start(audioContext.currentTime); oscillator.stop(audioContext.currentTime + 0.3);
+                    const ac = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ac.createOscillator(), gain = ac.createGain();
+                    osc.connect(gain); gain.connect(ac.destination);
+                    osc.frequency.value = { blue: 523.25, red: 659.25, green: 783.99 }[color]; osc.type = 'sine';
+                    gain.gain.setValueAtTime(0.3, ac.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ac.currentTime + 0.3);
+                    osc.start(ac.currentTime); osc.stop(ac.currentTime + 0.3);
                 } catch (e) {}
             };
 
-            const handlePressStart = (color) => { const timer = setTimeout(() => { undo(color); setLongPressTimer(null); }, 2000); setLongPressTimer(timer); };
+            const handlePressStart = (color) => { const t = setTimeout(() => { undo(color); setLongPressTimer(null); }, 2000); setLongPressTimer(t); };
             const handlePressEnd = () => { if (longPressTimer) { clearTimeout(longPressTimer); setLongPressTimer(null); } };
 
             const undo = (color) => {
                 if (scores[color] > 0) {
                     const s = { ...scores }; s[color]--; setScores(s);
-                    const newPresses = presses.slice(0, -1); setPresses(newPresses);
+                    const np = presses.slice(0, -1); setPresses(np);
                     const k = key(venue, month); const e = { ...events };
-                    e[k] = { venue, month, date, scores: s, presses: newPresses, notes, inRoom: '', team: '', done: false, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
+                    e[k] = { venue, month, date, scores: s, presses: np, notes, inRoom: '', team: '', done: false, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
                     save(e);
                 }
             };
 
             const press = (color) => {
                 const now = Date.now();
-                const timeSinceLastAttempt = now - lastPressAttempt[color];
+                if (now - lastPressAttempt[color] < COOLDOWN) { setLastPressAttempt({ ...lastPressAttempt, [color]: now }); return; }
                 setLastPressAttempt({ ...lastPressAttempt, [color]: now });
-                if (timeSinceLastAttempt < COOLDOWN) return;
                 if (now - lastInteractionRef.current > BUZZER_WINDOW) buzzerCountRef.current++;
                 lastInteractionRef.current = now;
-                const currentBlock = block();
-                if (currentBlock === 'buzzing-in') { if (now - lastBuzzInRef.current > BUZZER_WINDOW) buzzInCountRef.current++; lastBuzzInRef.current = now; }
-                else if (currentBlock === 'buzzing-out') { if (now - lastBuzzOutRef.current > BUZZER_WINDOW) buzzOutCountRef.current++; lastBuzzOutRef.current = now; }
+                const cb = block();
+                if (cb === 'buzzing-in') { if (now - lastBuzzInRef.current > BUZZER_WINDOW) buzzInCountRef.current++; lastBuzzInRef.current = now; }
+                else if (cb === 'buzzing-out') { if (now - lastBuzzOutRef.current > BUZZER_WINDOW) buzzOutCountRef.current++; lastBuzzOutRef.current = now; }
                 const s = { ...scores }; s[color]++;
-                const ps = [...presses, { color, time: new Date().toISOString(), block: currentBlock }];
+                const ps = [...presses, { color, time: new Date().toISOString(), block: cb }];
                 setScores(s); setPresses(ps); showEmoji(color);
                 const k = key(venue, month); const e = { ...events };
                 e[k] = { venue, month, date, scores: s, presses: ps, notes, inRoom: '', team: '', done: false, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
@@ -218,13 +206,13 @@
                 if (!skip) {
                     setSubmitting(true); setSubmitStatus(null);
                     try { await submitToSheets(eventData); setSubmitStatus('success'); } catch (err) { setSubmitStatus('offline'); }
-                    setSubmitting(false);
-                    setTimeout(() => resetAndGoHome(), 2500);
+                    setSubmitting(false); setTimeout(() => resetAndGoHome(), 2500);
                 } else { resetAndGoHome(); }
             };
 
             const resetAndGoHome = () => {
-                setVenue(''); setMonth(''); setScores({ blue: 0, red: 0, green: 0 }); setPresses([]); setInRoom(''); setTeam(''); setNotes(''); setSubmittedBy(''); setSubmitStatus(null);
+                setVenue(''); setMonth(''); setScores({ blue: 0, red: 0, green: 0 }); setPresses([]);
+                setInRoom(''); setTeam(''); setNotes(''); setSubmittedBy(''); setSubmitStatus(null);
                 buzzerCountRef.current = 0; buzzInCountRef.current = 0; buzzOutCountRef.current = 0;
                 lastInteractionRef.current = 0; lastBuzzInRef.current = 0; lastBuzzOutRef.current = 0;
                 setScreen('venue');
@@ -234,11 +222,11 @@
                 let c = 'Venue,Month,Date,3 New Met,One 2 Ones,Brought Some1,In Room,Team,Buzz In (10:00-10:45),Buzz Out (11:15-12:00),Total Buzzers Interacting (assumed),% Buzzers Engaged,% Meeting 3 New,% Doing 1-2-1s,Notes\n';
                 Object.values(events).forEach(ev => {
                     if (ev.done) {
-                        const room = parseInt(ev.inRoom) || 0; const buzzers = ev.buzzerCount || 0;
-                        const pctEngaged = room > 0 ? Math.round((buzzers / room) * 100) : 0;
+                        const room = parseInt(ev.inRoom) || 0, buzzers = ev.buzzerCount || 0;
+                        const pctE = room > 0 ? Math.round((buzzers / room) * 100) : 0;
                         const pct3 = room > 0 ? Math.round((ev.scores.blue / room) * 100) : 0;
                         const pct2 = room > 0 ? Math.round((ev.scores.red / room) * 100) : 0;
-                        c += ev.venue + ',"' + ev.month + '",' + ev.date + ',' + ev.scores.blue + ',' + ev.scores.red + ',' + ev.scores.green + ',' + (ev.inRoom || '') + ',' + (ev.team || '') + ',' + (ev.buzzInCount || 0) + ',' + (ev.buzzOutCount || 0) + ',' + buzzers + ',' + pctEngaged + '%,' + pct3 + '%,' + pct2 + '%,"' + (ev.notes || '') + '"\n';
+                        c += ev.venue + ',"' + ev.month + '",' + ev.date + ',' + ev.scores.blue + ',' + ev.scores.red + ',' + ev.scores.green + ',' + (ev.inRoom || '') + ',' + (ev.team || '') + ',' + (ev.buzzInCount || 0) + ',' + (ev.buzzOutCount || 0) + ',' + buzzers + ',' + pctE + '%,' + pct3 + '%,' + pct2 + '%,"' + (ev.notes || '') + '"\n';
                     }
                 });
                 try { const b = new Blob([c], { type: 'text/csv' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'lrbuzz-' + new Date().toISOString().split('T')[0] + '.csv'; a.click(); } catch (e) { alert(c); }
@@ -247,7 +235,7 @@
             const editEv = (k) => { const ev = events[k]; setEdit(k); setInRoom(ev.inRoom || ''); setTeam(ev.team || ''); setNotes(ev.notes || ''); setScores(ev.scores); setEditScores(false); };
             const saveEdit = () => { const e = { ...events }; e[edit] = { ...events[edit], inRoom, team, notes, scores }; save(e); setEdit(null); setEditScores(false); setInRoom(''); setTeam(''); setNotes(''); };
 
-            // ── SCREENS ──────────────────────────────────────────────
+            // ── SCREENS ───────────────────────────────────────
 
             if (warn) return (
                 <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
@@ -300,7 +288,7 @@
                             <h2 className="text-2xl text-white mb-6 text-center">Select Month</h2>
                             <div className="grid grid-cols-3 gap-4">
                                 {MONTHS.map(m => {
-                                    const k = key(venue, m); const has = events[k] && events[k].done;
+                                    const k = key(venue, m), has = events[k] && events[k].done;
                                     return <button key={m} onClick={() => pickMonth(m)} className={'p-6 rounded-lg text-xl font-semibold ' + (has ? 'bg-yellow-600 text-white' : 'bg-blue-600 text-white')}>{m}{has && <div className="text-sm mt-1">✓</div>}</button>;
                                 })}
                             </div>
@@ -359,19 +347,30 @@
 
                         {/* Coloured buttons */}
                         <div className="flex-1 flex gap-3 relative">
-                            {emoji && <div className="emoji-pop" style={{ position: 'absolute', top: '-60px', left: emoji.color === 'blue' ? '16.66%' : emoji.color === 'red' ? '50%' : '83.33%', transform: 'translateX(-50%)', zIndex: 50 }}>{emoji.emoji}</div>}
-                            <button onTouchStart={() => handlePressStart('blue')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('blue')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('blue')} className="flex-1 rounded-lg flex flex-col items-center justify-center" style={{ backgroundColor: '#00A19A' }}>
-                                <div className="text-9xl font-bold text-white mb-4">{scores.blue}</div>
-                                <div className="text-2xl font-semibold text-white">met 3 new people</div>
+                            {emoji && <div className="emoji-pop" style={{ position: 'absolute', top: '-50px', left: emoji.color === 'blue' ? '16.66%' : emoji.color === 'red' ? '50%' : '83.33%', transform: 'translateX(-50%)', zIndex: 50 }}>{emoji.emoji}</div>}
+
+                            {/* Blue */}
+                            <button onTouchStart={() => handlePressStart('blue')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('blue')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('blue')} className="flex-1 rounded-lg flex flex-col items-center justify-start pt-5" style={{ backgroundColor: '#00A19A' }}>
+                                <div className="text-center px-3 mb-4">
+                                    <div className="text-xl font-semibold text-white">met <span className="uppercase font-black">THREE</span> new people</div>
+                                </div>
+                                <div className="text-9xl font-bold text-white">{scores.blue}</div>
                             </button>
-                            <button onTouchStart={() => handlePressStart('red')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('red')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('red')} className="flex-1 rounded-lg flex flex-col items-center justify-center" style={{ backgroundColor: '#D60B52' }}>
-                                <div className="text-9xl font-bold text-white mb-4">{scores.red}</div>
-                                <div className="text-2xl font-semibold text-white">one 2 one's</div>
-                                <div className="text-xl text-white">(set or sat)</div>
+
+                            {/* Red */}
+                            <button onTouchStart={() => handlePressStart('red')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('red')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('red')} className="flex-1 rounded-lg flex flex-col items-center justify-start pt-5" style={{ backgroundColor: '#D60B52' }}>
+                                <div className="text-center px-3 mb-4">
+                                    <div className="text-xl font-semibold text-white">set or sat <span className="uppercase font-black">TWO</span> 1:1's</div>
+                                </div>
+                                <div className="text-9xl font-bold text-white">{scores.red}</div>
                             </button>
-                            <button onTouchStart={() => handlePressStart('green')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('green')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('green')} className="flex-1 rounded-lg flex flex-col items-center justify-center" style={{ backgroundColor: '#B6BD00' }}>
-                                <div className="text-9xl font-bold text-white mb-4">{scores.green}</div>
-                                <div className="text-2xl font-semibold text-white">brought some1 along</div>
+
+                            {/* Green */}
+                            <button onTouchStart={() => handlePressStart('green')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('green')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('green')} className="flex-1 rounded-lg flex flex-col items-center justify-start pt-5" style={{ backgroundColor: '#B6BD00' }}>
+                                <div className="text-center px-3 mb-4">
+                                    <div className="text-xl font-semibold text-white">brought <span className="uppercase font-black">someONE</span> along</div>
+                                </div>
+                                <div className="text-9xl font-bold text-white">{scores.green}</div>
                             </button>
                         </div>
 
@@ -380,9 +379,15 @@
                             <div className="text-lg text-yellow-400 font-semibold">{timeInfo.display}</div>
                         </div>
 
-                        {/* Bottom bar: Reset left, Finish right */}
-                        <div className="flex justify-between">
+                        {/* Bottom bar: Reset left, Just tap once! centre, Finish right */}
+                        <div className="flex justify-between items-center">
                             <button onClick={() => { setPinMode('reset'); setPin(''); setPinError(false); setScreen('pin'); }} className="px-8 py-3 bg-red-700 text-white rounded-lg font-semibold">Reset</button>
+
+                            {/* Just tap once! circle */}
+                            <div className="pulse-ring flex items-center justify-center rounded-full border-4 border-yellow-400 text-yellow-400 font-bold text-center" style={{ width: '90px', height: '90px', fontSize: '0.75rem', lineHeight: '1.1' }}>
+                                <span>Just tap<br/>once!</span>
+                            </div>
+
                             <button onClick={() => { setPinMode('finish'); setPin(''); setPinError(false); setScreen('pin'); }} className="px-8 py-3 bg-yellow-600 text-white rounded-lg font-semibold">Finish</button>
                         </div>
 
@@ -441,8 +446,8 @@
                                     </thead>
                                     <tbody>
                                         {done.map(([k, ev]) => {
-                                            const room = parseInt(ev.inRoom) || 0; const buzzers = ev.buzzerCount || 0;
-                                            const pctEngaged = room > 0 ? Math.round((buzzers / room) * 100) : 0;
+                                            const room = parseInt(ev.inRoom) || 0, buzzers = ev.buzzerCount || 0;
+                                            const pctE = room > 0 ? Math.round((buzzers / room) * 100) : 0;
                                             const pct3 = room > 0 ? Math.round((ev.scores.blue / room) * 100) : 0;
                                             const pct2 = room > 0 ? Math.round((ev.scores.red / room) * 100) : 0;
                                             return (
@@ -453,7 +458,7 @@
                                                     <td className="p-4 text-center font-semibold" style={{ color: '#B6BD00' }}>{ev.scores.green}</td>
                                                     <td className="p-4 text-center">{ev.inRoom || '-'}</td><td className="p-4 text-center">{ev.team || '-'}</td>
                                                     <td className="p-4 text-center">{ev.buzzInCount || 0}</td><td className="p-4 text-center">{ev.buzzOutCount || 0}</td>
-                                                    <td className="p-4 text-center">{buzzers}</td><td className="p-4 text-center">{pctEngaged}%</td>
+                                                    <td className="p-4 text-center">{buzzers}</td><td className="p-4 text-center">{pctE}%</td>
                                                     <td className="p-4 text-center">{pct3}%</td><td className="p-4 text-center">{pct2}%</td>
                                                     <td className="p-4 text-sm">{ev.notes || '-'}</td>
                                                     <td className="p-4 text-center"><button onClick={() => editEv(k)} className="px-4 py-2 bg-blue-600 text-white rounded text-sm">Edit</button></td>
