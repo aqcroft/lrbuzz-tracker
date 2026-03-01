@@ -228,6 +228,12 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
 
 <!-- OVERVIEW -->
 <div class="page active" id="tab-overview">
+  <!-- Month nav -->
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <button class="sec-btn" onclick="stepOverview(-1)">← Prev</button>
+    <span style="font-family:'DM Serif Display',serif;font-size:18px" id="overview-month-label">—</span>
+    <button class="sec-btn" id="overview-next-btn" onclick="stepOverview(1)">Next →</button>
+  </div>
   <div class="kpi-row" id="kpi-overview"></div>
   <div class="grid-2">
     <div class="card"><div class="card-title">Attendance — Full History</div><div class="chart-wrap"><canvas id="ch-history"></canvas></div></div>
@@ -235,10 +241,17 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
   </div>
   <div class="grid-2">
     <div class="card"><div class="card-title">Alerts & Actions</div><div id="alerts"></div></div>
-    <div class="card"><div class="card-title">Last 8 Events</div>
-      <table><thead><tr><th>Month</th><th>Booked</th><th>Attended</th><th>New</th><th>Returning</th><th>New %</th></tr></thead>
-      <tbody id="recent-table"></tbody></table>
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between">
+        <span>321 Tracker — Buzzer Data</span>
+        <span id="tracker-event-label" style="color:var(--muted);font-weight:400"></span>
+      </div>
+      <div id="tracker-data"><div class="empty">No buzzer submission found for this event.</div></div>
     </div>
+  </div>
+  <div class="card" style="margin-top:12px"><div class="card-title">Last 8 Events</div>
+    <table><thead><tr><th>Month</th><th>Booked</th><th>Attended</th><th>New</th><th>Returning</th><th>New %</th></tr></thead>
+    <tbody id="recent-table"></tbody></table>
   </div>
 </div>
 
@@ -442,17 +455,18 @@ function checkPw(){
 // Data fetched securely via Apps Script — no raw CSV URLs exposed
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxFwsTaVsTi6HV-uMvyejn2D7pqFI2lvDejYaDKvYlRqf8hI7giVDGu1V8_UU_eAxeElw/exec';
 const SCRIPT_KEY = 'mhbuzz2024';
-const SHEET_NAMES = { events:'Events', attendance:'Attendance', people:'People', plenty:'Plenty' };
+const SHEET_NAMES = { events:'Events', attendance:'Attendance', people:'People', plenty:'Plenty', tracker:'321_Tracker' };
 
 // ─── STATE ─────────────────────────────────────────────────────────
-let DB={events:[],attendance:[],people:[],plenty:[]};
+let DB={events:[],attendance:[],people:[],plenty:[],tracker:[]};
 let charts={};
 let peopleFilter='all';
 let ftSelectedDate=null;
 let streakWindow=6;
-let notes={};          // person_id → note string (session)
-let noShows=new Set(); // person_ids marked as no-show (session)
-let edEventDate=null;  // which event Event Day tab is showing
+let notes={};
+let noShows=new Set();
+let edEventDate=null;
+let overviewIdx=-1;
 
 // ─── LOAD ──────────────────────────────────────────────────────────
 async function fetchSheet(name){
@@ -466,10 +480,10 @@ async function fetchSheet(name){
 async function loadAll(){
   document.getElementById('loading').style.display='flex';
   try{
-    const[events,attendance,people,plenty]=await Promise.all([
-      fetchSheet('events'),fetchSheet('attendance'),fetchSheet('people'),fetchSheet('plenty')
+    const[events,attendance,people,plenty,tracker]=await Promise.all([
+      fetchSheet('events'),fetchSheet('attendance'),fetchSheet('people'),fetchSheet('plenty'),fetchSheet('tracker')
     ]);
-    DB={events,attendance,people,plenty};
+    DB={events,attendance,people,plenty,tracker};
     destroyCharts();
     ftSelectedDate=DB.events.length?DB.events[DB.events.length-1].date:null;
     edEventDate=ftSelectedDate;
@@ -543,10 +557,10 @@ function render(){
   document.getElementById('header-meta').innerHTML=
     `Last event: <strong>${latest?.label||'—'}</strong> &nbsp;·&nbsp; ${num(latest?.total_booked)} booked &nbsp;·&nbsp; <strong style="color:var(--teal)">${num(latest?.total_new)} first-timers</strong>`;
 
-  // Pre-fill event day event ID
   if(latest) document.getElementById('ed-event-id').value=latest.event_id||latest.label||'';
 
-  renderOverview(events,latest,last3Dates);
+  overviewIdx=events.length-1;
+  renderOverview(events);
   renderEventDay(events);
   renderFirstTimers(events);
   renderLoyalty(events);
@@ -556,26 +570,46 @@ function render(){
 }
 
 // ─── OVERVIEW ──────────────────────────────────────────────────────
-function renderOverview(events,latest,last3Dates){
+function stepOverview(dir){
+  const events=DB.events;
+  const maxIdx=events.length-1;
+  overviewIdx=Math.max(0,Math.min(maxIdx,overviewIdx+dir));
+  destroyCharts();
+  renderOverview(events);
+}
+
+function renderOverview(events){
+  const maxIdx=events.length-1;
+  const ev=events[overviewIdx];
+  const last3Dates=events.slice(-3).map(e=>e.date);
+  const last6Dates=events.slice(-6).map(e=>e.date);
   const people=DB.people;
   const nonTeam=people.filter(p=>!isTeam(p));
   const regulars=nonTeam.filter(p=>num(p.total_attended)>=5);
   const onceDone=nonTeam.filter(p=>num(p.total_attended)===1);
-  const last6Dates=events.slice(-6).map(e=>e.date);
+  const actual=num(ev?.actual_attended)||num(ev?.total_booked)||0;
+
+  document.getElementById('overview-month-label').textContent=ev?.label||'—';
+  const nextBtn=document.getElementById('overview-next-btn');
+  nextBtn.disabled=(overviewIdx>=maxIdx);
+  nextBtn.style.opacity=(overviewIdx>=maxIdx)?'0.4':'1';
 
   document.getElementById('kpi-overview').innerHTML=`
-    <div class="kpi accent-teal"><div class="kpi-label">Last Event</div><div class="kpi-value c-teal">${num(latest?.total_booked)}</div><div class="kpi-sub">${latest?.label} booked</div></div>
-    <div class="kpi accent-green"><div class="kpi-label">First-Timers</div><div class="kpi-value c-green">${num(latest?.total_new)}</div><div class="kpi-sub">${latest?.total_booked?Math.round(num(latest.total_new)/num(latest.total_booked)*100):0}% of room</div></div>
-    <div class="kpi"><div class="kpi-label">Returning</div><div class="kpi-value">${num(latest?.total_returning)}</div><div class="kpi-sub">familiar faces</div></div>
-    <div class="kpi"><div class="kpi-label">All-Time Visitors</div><div class="kpi-value">${people.length}</div><div class="kpi-sub">unique people</div></div>
+    <div class="kpi accent-teal"><div class="kpi-label">Booked</div><div class="kpi-value c-teal">${num(ev?.total_booked)}</div><div class="kpi-sub">${ev?.label}</div></div>
+    <div class="kpi accent-green"><div class="kpi-label">First-Timers</div><div class="kpi-value c-green">${num(ev?.total_new)}</div><div class="kpi-sub">${actual?Math.round(num(ev.total_new)/actual*100):0}% of room</div></div>
+    <div class="kpi"><div class="kpi-label">Returning</div><div class="kpi-value">${num(ev?.total_returning)}</div><div class="kpi-sub">familiar faces</div></div>
+    ${ev?.actual_attended?`<div class="kpi accent-teal"><div class="kpi-label">In the Room</div><div class="kpi-value c-teal">${num(ev.actual_attended)}</div><div class="kpi-sub">actual attended</div></div>`:`<div class="kpi"><div class="kpi-label">All-Time Visitors</div><div class="kpi-value">${people.length}</div><div class="kpi-sub">unique people</div></div>`}
     <div class="kpi accent-orange"><div class="kpi-label">Loyal Core</div><div class="kpi-value c-orange">${regulars.length}</div><div class="kpi-sub">5+ visits</div></div>
-    <div class="kpi accent-pink"><div class="kpi-label">One & Done</div><div class="kpi-value c-pink">${onceDone.length}</div><div class="kpi-sub">${Math.round(onceDone.length/Math.max(nonTeam.length,1)*100)}% of visitors</div></div>`;
+    <div class="kpi accent-pink"><div class="kpi-label">One & Done</div><div class="kpi-value c-pink">${onceDone.length}</div><div class="kpi-sub">${Math.round(onceDone.length/Math.max(nonTeam.length,1)*100)}%</div></div>`;
+
+  // 321 Tracker buzzer data
+  render321TrackerData(ev);
 
   makeChart('ch-history','bar',{
     labels:events.map(e=>e.label),
     datasets:[
-      {label:'Returning',data:events.map(e=>num(e.total_returning)),backgroundColor:'rgba(0,161,154,0.55)',stack:'a'},
-      {label:'New',data:events.map(e=>num(e.total_new)),backgroundColor:'rgba(182,189,0,0.75)',stack:'a'},
+      {label:'Returning',data:events.map(e=>num(e.total_returning)),backgroundColor:events.map(e=>e.date===ev?.date?'rgba(0,161,154,0.95)':'rgba(0,161,154,0.45)'),stack:'a'},
+      {label:'New',data:events.map(e=>num(e.total_new)),backgroundColor:events.map(e=>e.date===ev?.date?'rgba(182,189,0,0.95)':'rgba(182,189,0,0.55)'),stack:'a'},
     ]
   },{plugins:{legend:{display:true,labels:{color:'#6B7280',font:{size:11}}}},
      scales:{x:{stacked:true,grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:10},maxTicksLimit:14}},
@@ -591,53 +625,96 @@ function renderOverview(events,latest,last3Dates){
   },{plugins:{legend:{display:true,labels:{color:'#6B7280',font:{size:11}}}}});
 
   document.getElementById('recent-table').innerHTML=events.slice(-8).reverse().map(e=>{
-    const actual=num(e.actual_attended)||num(e.total_booked);
-    return `<tr><td>${e.label}</td><td><strong>${num(e.total_booked)}</strong></td>
-    <td>${e.actual_attended?`<strong class="c-teal">${num(e.actual_attended)}</strong>`:'<span style="color:var(--muted)">—</span>'}</td>
-    <td><span class="c-green"><strong>${num(e.total_new)}</strong></span></td>
-    <td>${num(e.total_returning)}</td>
-    <td>${actual?Math.round(num(e.total_new)/actual*100):0}%</td></tr>`;
+    const act=num(e.actual_attended)||null;
+    const isSel=e.date===ev?.date;
+    return `<tr style="${isSel?'background:var(--teal-dim);font-weight:600':''}">
+      <td>${e.label}</td><td>${num(e.total_booked)}</td>
+      <td>${act?`<strong class="c-teal">${act}</strong>`:'<span style="color:var(--muted)">—</span>'}</td>
+      <td><span class="c-green">${num(e.total_new)}</span></td>
+      <td>${num(e.total_returning)}</td>
+      <td>${act?Math.round(num(e.total_new)/act*100):0}%</td></tr>`;
   }).join('');
 
+  const latest=events[maxIdx];
   const alerts=[];
   const ftCount=num(latest?.total_new);
   if(ftCount>0) alerts.push({cls:'teal',icon:'🟢',text:`<strong>${ftCount} first-timers</strong> from ${latest.label} need a follow-up within 48 hours. See the First-Timers tab.`});
   const lapsed=DB.people.filter(p=>!isTeam(p)&&num(p.total_attended)>=3&&!last3Dates.some(d=>attended(p.person_id,d)));
   if(lapsed.length) alerts.push({cls:'orange',icon:'🟡',text:`<strong>${lapsed.length} regulars</strong> haven't been seen in 3+ months. Check Loyalty.`});
   const phil=DB.people.find(p=>p.role==='buzz_plus');
-  if(phil){
-    const r=last6Dates.filter(d=>attended(phil.person_id,d)).length;
-    if(r<3) alerts.push({cls:'pink',icon:'🔵',text:`<strong>${phil.name_first} ${phil.name_last}</strong> (Buzz+) has attended ${r}/6 recent events. Worth a touchpoint.`});
-  }
+  if(phil){const r=last6Dates.filter(d=>attended(phil.person_id,d)).length;if(r<3) alerts.push({cls:'pink',icon:'🔵',text:`<strong>${phil.name_first} ${phil.name_last}</strong> (Buzz+) attended ${r}/6 recent events.`});}
   const odRate=Math.round(onceDone.length/Math.max(nonTeam.length,1)*100);
-  if(odRate>45) alerts.push({cls:'orange',icon:'⚠️',text:`<strong>${odRate}% of all visitors came once and never returned.</strong> First-timer follow-up is your highest-leverage action.`});
-
+  if(odRate>45) alerts.push({cls:'orange',icon:'⚠️',text:`<strong>${odRate}% of visitors came once and never returned.</strong> First-timer follow-up is your highest-leverage action.`});
   document.getElementById('alerts').innerHTML=alerts.map(a=>`
     <div class="alert ${a.cls}"><div class="alert-icon">${a.icon}</div><div class="alert-text">${a.text}</div></div>`).join('')
     ||'<div class="empty">No urgent alerts — looking good.</div>';
+}
+
+function render321TrackerData(ev){
+  const el=document.getElementById('tracker-data');
+  const label=document.getElementById('tracker-event-label');
+  if(!ev){el.innerHTML='<div class="empty">No event selected.</div>';return;}
+  label.textContent=ev.label||'';
+
+  // Match 321_Tracker row to this event by date
+  // The tracker stores date as yyyy-MM-dd (normalised by Apps Script)
+  const row=DB.tracker.find(r=>String(r.date||'').trim()===String(ev.date||'').trim()
+    && String(r.venue||'').toLowerCase().includes('harborough'));
+
+  if(!row){
+    el.innerHTML='<div class="empty">No buzzer submission found for this event.</div>';
+    return;
+  }
+
+  const inRoom=row.in_room||'—';
+  const hostTeam=row.hosting_team||'—';
+  const met3=row.met_3_new||'—';
+  const ones=row.one_2_ones||'—';
+  const brought=row.brought_some1||'—';
+  const buzzIn=row.buzz_in||'—';
+  const buzzOut=row.buzz_out||'—';
+  const buzzers=row.total_buzzers||'—';
+  const tNotes=row.notes||null;
+  const submittedBy=row.submitted_by||null;
+
+  const pctBuzz=inRoom&&buzzers&&inRoom!=='—'?Math.round(buzzers/inRoom*100)+'%':'—';
+  const pct3=inRoom&&met3&&inRoom!=='—'?Math.round(met3/inRoom*100)+'%':'—';
+
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="ed-kpi"><div class="ed-kpi-val">${inRoom}</div><div class="ed-kpi-label">In the Room</div></div>
+      <div class="ed-kpi"><div class="ed-kpi-val">${hostTeam}</div><div class="ed-kpi-label">Hosting Team</div></div>
+      <div class="ed-kpi"><div class="ed-kpi-val c-teal">${buzzers}</div><div class="ed-kpi-label">Total Buzzers</div></div>
+      <div class="ed-kpi"><div class="ed-kpi-val c-teal">${met3}</div><div class="ed-kpi-label">Met 3 New</div></div>
+      <div class="ed-kpi"><div class="ed-kpi-val c-pink">${ones}</div><div class="ed-kpi-label">1:1s Set</div></div>
+      <div class="ed-kpi"><div class="ed-kpi-val c-green">${brought}</div><div class="ed-kpi-label">Brought Someone</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;font-size:12px;color:var(--muted)">
+      <span>Buzz In: <strong style="color:var(--text)">${buzzIn}</strong></span>
+      <span style="color:var(--border)">·</span>
+      <span>Buzz Out: <strong style="color:var(--text)">${buzzOut}</strong></span>
+      <span style="color:var(--border)">·</span>
+      <span>Buzzers engaged: <strong style="color:var(--teal)">${pctBuzz}</strong></span>
+      <span style="color:var(--border)">·</span>
+      <span>Met 3 new: <strong style="color:var(--teal)">${pct3}</strong></span>
+    </div>
+    ${tNotes?`<div style="font-size:12px;color:var(--muted);padding:8px;background:var(--surface2);border-radius:6px;margin-bottom:6px">${tNotes}</div>`:''}
+    ${submittedBy?`<div style="font-size:11px;color:var(--muted)">Submitted by: ${submittedBy}</div>`:''}`;
 }
 
 // ─── EVENT DAY ─────────────────────────────────────────────────────
 function renderEventDay(events){
   const latest=events[events.length-1];
   if(!latest){document.getElementById('ed-heading').textContent='Event Day — no data';return;}
-
   document.getElementById('ed-heading').textContent=`Event Day — ${latest.label}`;
 
-  // People booked for this event (attended = true in attendance tab for this date)
-  const booked=DB.people.filter(p=>attended(p.person_id,latest.date)&&!isTeam(p));
-  // First-timers at this event
-  const newPeople=booked.filter(p=>{
-    const dates=personDates(p.person_id);
-    return dates[0]===latest.date;
-  });
-
-  // Sort alphabetically by first name (as Buzz app does)
+  // Include EVERYONE booked including team members
+  const booked=DB.people.filter(p=>attended(p.person_id,latest.date));
+  const newPeople=booked.filter(p=>{const dates=personDates(p.person_id);return dates[0]===latest.date;});
   const alpha=(a,b)=>`${a.name_first}${a.name_last}`.localeCompare(`${b.name_first}${b.name_last}`);
   const sortedBooked=[...booked].sort(alpha);
   const sortedNew=[...newPeople].sort(alpha);
 
-  // KPI summary
   const nsCount=noShows.size;
   const actualBooked=sortedBooked.length;
   document.getElementById('ed-summary').innerHTML=`
@@ -651,32 +728,31 @@ function renderEventDay(events){
   document.getElementById('ed-new-count').textContent=`${sortedNew.length} people`;
   document.getElementById('ed-noshow-count').textContent=nsCount?`${nsCount} marked`:'none yet';
 
-  renderEdList('all', sortedBooked);
-  renderEdList('new', sortedNew);
-  renderNoShows(booked);
+  renderEdList('all',sortedBooked,latest.date);
+  renderEdList('new',sortedNew,latest.date);
+  renderNoShows(booked,latest.date);
 }
 
-function renderEdList(type, people){
+function renderEdList(type,people,eventDate){
   const q=(document.getElementById(`ed-search-${type}`)?.value||'').toLowerCase();
   const filtered=q?people.filter(p=>`${p.name_first} ${p.name_last} ${p.company||''}`.toLowerCase().includes(q)):people;
-
   const rows=filtered.map(p=>{
-    const pid=p.person_id||`${p.name_first}_${p.name_last}`;
+    const pid=String(p.person_id||`${p.name_first}_${p.name_last}`).trim();
     const isNS=noShows.has(pid);
+    const isNew=(()=>{const d=personDates(p.person_id);return d[0]===eventDate;})();
     const visits=num(p.total_attended);
-    const isNew=type==='all'&&(()=>{const d=personDates(p.person_id);return d[0]===DB.events[DB.events.length-1]?.date;})();
-    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);${isNS?'opacity:.5':''}">
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 4px;border-bottom:1px solid var(--border);${isNew&&!isNS?'background:var(--green-light);margin:0 -4px;border-radius:4px;':''}${isNS?'opacity:.5;':''}">
       <div style="flex:1;min-width:0">
-        <div style="font-weight:600;font-size:13px">${p.name_first} ${p.name_last}
-          ${isNew?'<span class="badge b-new" style="margin-left:4px">New</span>':''}
-          ${isNS?'<span class="badge b-noshow" style="margin-left:4px">No-show</span>':''}
+        <div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          ${p.name_first} ${p.name_last}
+          ${roleBadge(p.role)}
+          ${isNS?'<span class="badge b-noshow">No-show</span>':''}
         </div>
-        <div style="font-size:11px;color:var(--muted)">${p.company||'—'} ${type==='all'?`· ${visits} visit${visits!==1?'s':''}`:''}${p.email?` · ${p.email}`:''}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${p.company||'—'}${type==='all'?` · ${visits} visit${visits!==1?'s':''}`:''}${p.email?` · ${p.email}`:''}</div>
       </div>
       ${type==='all'?`<button class="noshow-toggle ${isNS?'marked':''}" onclick="toggleNoShow('${pid}')">${isNS?'Undo':'No-show'}</button>`:''}
     </div>`;
   }).join('');
-
   const el=document.getElementById(`ed-list-${type}`);
   if(el) el.innerHTML=rows||`<div class="empty">No results</div>`;
 }
@@ -685,53 +761,64 @@ function filterEdList(type){
   const events=DB.events;
   const latest=events[events.length-1];
   if(!latest) return;
-  const booked=DB.people.filter(p=>attended(p.person_id,latest.date)&&!isTeam(p));
+  const booked=DB.people.filter(p=>attended(p.person_id,latest.date));
   const alpha=(a,b)=>`${a.name_first}${a.name_last}`.localeCompare(`${b.name_first}${b.name_last}`);
-  if(type==='all') renderEdList('all',[...booked].sort(alpha));
+  if(type==='all') renderEdList('all',[...booked].sort(alpha),latest.date);
   if(type==='new'){
     const newP=booked.filter(p=>{const d=personDates(p.person_id);return d[0]===latest.date;});
-    renderEdList('new',[...newP].sort(alpha));
+    renderEdList('new',[...newP].sort(alpha),latest.date);
   }
 }
 
 function toggleNoShow(pid){
+  pid=String(pid).trim();
   if(noShows.has(pid)) noShows.delete(pid);
   else noShows.add(pid);
   renderEventDay(DB.events);
 }
 
-function renderNoShows(allBooked){
-  const nsList=allBooked.filter(p=>{
-    const pid=p.person_id||`${p.name_first}_${p.name_last}`;
-    return noShows.has(pid);
-  }).sort((a,b)=>`${a.name_first}${a.name_last}`.localeCompare(`${b.name_first}${b.name_last}`));
-
+function renderNoShows(allBooked,eventDate){
+  const nsList=allBooked.filter(p=>noShows.has(String(p.person_id||`${p.name_first}_${p.name_last}`).trim()))
+    .sort((a,b)=>`${a.name_first}${a.name_last}`.localeCompare(`${b.name_first}${b.name_last}`));
   const rows=nsList.map(p=>{
-    const pid=p.person_id||`${p.name_first}_${p.name_last}`;
+    const pid=String(p.person_id||`${p.name_first}_${p.name_last}`).trim();
     const saved=notes[`ns_${pid}`]||'';
     return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <span style="font-weight:600;font-size:13px">${p.name_first} ${p.name_last}</span>
+        <div><span style="font-weight:600;font-size:13px">${p.name_first} ${p.name_last}</span> ${roleBadge(p.role)}</div>
         <button class="noshow-toggle" onclick="toggleNoShow('${pid}')">Undo</button>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:5px">${p.company||'—'}${p.email?` · ${p.email}`:''}</div>
       <div class="note-cell">
         <textarea id="nsnote-${pid}" placeholder="Reason / follow-up note...">${saved}</textarea>
-        <button class="note-save" onclick="saveNsNote('${pid}')">Save</button>
-        <div class="note-saved" id="nssaved-${pid}">✓ Saved</div>
+        <button class="note-save" onclick="saveNsNote('${pid}','${eventDate}')">Save to Sheet</button>
+        <div class="note-saved" id="nssaved-${pid}">✓ Saved to sheet</div>
       </div>
     </div>`;
   }).join('');
-
   document.getElementById('ed-list-noshow').innerHTML=rows||'<div class="empty">No no-shows marked yet.</div>';
 }
 
-function saveNsNote(pid){
+async function saveNsNote(pid,eventDate){
   const ta=document.getElementById(`nsnote-${pid}`);
   if(!ta) return;
   notes[`ns_${pid}`]=ta.value;
-  const el=document.getElementById(`nssaved-${pid}`);
-  if(el){el.style.display='block';setTimeout(()=>el.style.display='none',1800);}
+  const savedEl=document.getElementById(`nssaved-${pid}`);
+  // Write to Attendance sheet via Apps Script
+  try{
+    const r=await fetch(SCRIPT_URL,{
+      method:'POST',
+      body:JSON.stringify({type:'note',key:SCRIPT_KEY,person_id:pid,event_date:eventDate,note:ta.value})
+    });
+    const d=await r.json();
+    if(d.result==='success'){
+      if(savedEl){savedEl.textContent='✓ Saved to sheet';savedEl.style.color='var(--teal)';savedEl.style.display='block';setTimeout(()=>savedEl.style.display='none',2000);}
+    } else {
+      if(savedEl){savedEl.textContent='⚠ '+d.message;savedEl.style.color='var(--orange)';savedEl.style.display='block';setTimeout(()=>savedEl.style.display='none',4000);}
+    }
+  }catch(e){
+    if(savedEl){savedEl.textContent='⚠ Network error';savedEl.style.color='var(--pink)';savedEl.style.display='block';setTimeout(()=>savedEl.style.display='none',3000);}
+  }
 }
 
 function logActualAttendance(){
@@ -799,12 +886,26 @@ function selectFTMonth(date,btn){
   renderFirstTimers(DB.events);
 }
 
-function saveNote(pid){
+async function saveNote(pid){
   const ta=document.getElementById('note-'+pid);
   if(!ta) return;
   notes[pid]=ta.value;
-  const el=document.getElementById('saved-'+pid);
-  if(el){el.style.display='block';setTimeout(()=>el.style.display='none',1800);}
+  const savedEl=document.getElementById('saved-'+pid);
+  try{
+    const r=await fetch(SCRIPT_URL,{
+      method:'POST',
+      body:JSON.stringify({type:'note',key:SCRIPT_KEY,person_id:pid,event_date:ftSelectedDate,note:ta.value})
+    });
+    const d=await r.json();
+    if(savedEl){
+      savedEl.textContent=d.result==='success'?'✓ Saved to sheet':'⚠ '+d.message;
+      savedEl.style.color=d.result==='success'?'var(--teal)':'var(--orange)';
+      savedEl.style.display='block';
+      setTimeout(()=>savedEl.style.display='none',2000);
+    }
+  }catch(e){
+    if(savedEl){savedEl.textContent='⚠ Network error';savedEl.style.color='var(--pink)';savedEl.style.display='block';setTimeout(()=>savedEl.style.display='none',3000);}
+  }
 }
 
 function exportFTcsv(){
