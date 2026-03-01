@@ -8,7 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <style>
-:root {
+:root{
   --teal:#00A19A;--teal-light:#E6F7F6;--teal-dim:rgba(0,161,154,0.12);
   --green:#B6BD00;--green-light:#F5F6E6;--green-dim:rgba(182,189,0,0.12);
   --orange:#F39200;--orange-light:#FEF4E6;--orange-dim:rgba(243,146,0,0.12);
@@ -20,11 +20,24 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;min-height:100vh}
 
+/* PASSWORD GATE */
+#pw-gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999}
+.pw-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px 36px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.1);max-width:340px;width:90%}
+.pw-logo{font-family:'DM Serif Display',serif;font-size:24px;color:var(--teal);margin-bottom:6px}
+.pw-sub{font-size:13px;color:var(--muted);margin-bottom:24px}
+.pw-input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:11px 14px;font-family:inherit;font-size:15px;color:var(--text);outline:none;text-align:center;letter-spacing:3px;margin-bottom:12px}
+.pw-input:focus{border-color:var(--teal)}
+.pw-btn{width:100%;background:var(--teal);color:white;border:none;border-radius:8px;padding:11px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.pw-btn:hover{opacity:.85}
+.pw-err{color:var(--pink);font-size:12px;margin-top:8px;display:none}
+
+/* LOADING */
 #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:16px}
 .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .load-text{color:var(--muted);font-size:13px}
 
+/* HEADER */
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
 .logo{font-family:'DM Serif Display',serif;font-size:20px;color:var(--teal);letter-spacing:-0.5px;display:flex;align-items:center;gap:8px}
 .logo-dot{width:10px;height:10px;border-radius:50%;background:var(--orange)}
@@ -35,10 +48,13 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .refresh-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:500;transition:all .15s}
 .refresh-btn:hover{border-color:var(--teal);color:var(--teal)}
 
+/* TABS */
 .tabs{display:flex;padding:0 20px;border-bottom:2px solid var(--border);background:var(--surface);overflow-x:auto}
 .tab{padding:12px 16px;cursor:pointer;color:var(--muted);font-weight:500;font-size:13px;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s}
 .tab:hover{color:var(--text)}
 .tab.active{color:var(--teal);border-bottom-color:var(--teal);font-weight:600}
+.tab.event-day-tab{color:var(--orange)}
+.tab.event-day-tab.active{color:var(--orange);border-bottom-color:var(--orange)}
 
 .page{display:none;padding:18px 20px;max-width:1400px}
 .page.active{display:block}
@@ -61,7 +77,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .kpi.accent-green{border-left:3px solid var(--green)}
 .kpi.accent-orange{border-left:3px solid var(--orange)}
 .kpi.accent-pink{border-left:3px solid var(--pink)}
-.c-teal{color:var(--teal)}.c-green{color:var(--green)}.c-orange{color:var(--orange)}.c-pink{color:var(--pink)}.c-muted{color:var(--muted)}
+.c-teal{color:var(--teal)}.c-green{color:var(--green)}.c-orange{color:var(--orange)}.c-pink{color:var(--pink)}
 
 table{width:100%;border-collapse:collapse}
 th{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:600;padding:7px 9px;text-align:left;border-bottom:2px solid var(--border)}
@@ -80,14 +96,13 @@ tr:hover td{background:var(--surface2)}
 .b-lapsed{background:var(--pink-dim);color:var(--pink)}
 .b-candidate{background:var(--orange-dim);color:var(--orange)}
 .b-new{background:var(--green-dim);color:#7A8000}
+.b-noshow{background:var(--pink-dim);color:var(--pink)}
 
-/* STREAK DOTS — newest LEFT, oldest RIGHT */
+/* STREAK DOTS */
 .streak-bar{display:flex;gap:3px;align-items:center}
 .sdot{width:10px;height:10px;border-radius:2px;background:var(--surface2);border:1px solid var(--border)}
 .sdot.hit{background:var(--teal);border-color:var(--teal)}
 .sdot.hit-old{background:rgba(0,161,154,0.4);border-color:rgba(0,161,154,0.4)}
-.streak-legend{font-size:10px;color:var(--muted);margin-top:4px}
-.streak-legend span{display:inline-flex;align-items:center;gap:3px;margin-right:8px}
 
 .search-box{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 13px;color:var(--text);font-family:inherit;font-size:13px;margin-bottom:12px;outline:none;box-shadow:var(--shadow)}
 .search-box:focus{border-color:var(--teal)}
@@ -107,7 +122,6 @@ tr:hover td{background:var(--surface2)}
 .plenty-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:7px;margin-bottom:12px}
 .checkpoint{background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 5px;text-align:center;box-shadow:var(--shadow)}
 .checkpoint.current{border-color:var(--teal);background:var(--teal-light)}
-.checkpoint.prev-month{border-color:var(--orange);opacity:.7}
 .cp-label{font-size:10px;color:var(--muted);margin-bottom:2px;font-weight:500}
 .cp-value{font-family:'DM Serif Display',serif;font-size:19px;color:var(--text)}
 .cp-value.empty{color:var(--border)}
@@ -127,11 +141,14 @@ tr:hover td{background:var(--surface2)}
 .input-group label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600}
 .input-group input{background:var(--surface);border:1.5px solid var(--border);border-radius:7px;padding:8px 9px;color:var(--text);font-family:inherit;font-size:14px;width:80px;outline:none;box-shadow:var(--shadow)}
 .input-group input:focus{border-color:var(--teal)}
+.input-group input.wide{width:120px}
 .save-btn{background:var(--teal);color:white;border:none;border-radius:7px;padding:9px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s;white-space:nowrap}
 .save-btn:hover{opacity:.85}
+.save-btn.orange{background:var(--orange)}
 .sec-btn{background:var(--surface2);color:var(--text);border:1.5px solid var(--border);border-radius:7px;padding:8px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
 .sec-btn:hover{border-color:var(--teal);color:var(--teal)}
 .save-note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5}
+.output-box{display:none;margin-top:10px;padding:10px;background:var(--surface2);border-radius:6px;font-family:monospace;font-size:12px;color:var(--text);word-break:break-all;line-height:1.7}
 
 /* HEALTH */
 .health-score-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;min-height:190px}
@@ -144,22 +161,52 @@ tr:hover td{background:var(--surface2)}
 .empty{color:var(--muted);font-style:italic;font-size:13px;padding:8px 0}
 
 /* NOTES */
-.note-cell textarea{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:12px;color:var(--text);resize:none;outline:none;min-height:52px;transition:border-color .15s}
+.note-cell textarea{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:12px;color:var(--text);resize:none;outline:none;min-height:48px;transition:border-color .15s}
 .note-cell textarea:focus{border-color:var(--teal)}
-.note-save{background:var(--teal);color:white;border:none;border-radius:5px;padding:4px 10px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;margin-top:4px;transition:opacity .15s}
+.note-save{background:var(--teal);color:white;border:none;border-radius:5px;padding:4px 10px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;margin-top:3px;transition:opacity .15s}
 .note-save:hover{opacity:.8}
-.note-saved{color:var(--teal);font-size:11px;margin-top:4px;display:none}
+.note-saved{color:var(--teal);font-size:11px;margin-top:3px;display:none}
 .ft-actions{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+
+/* EVENT DAY */
+.ed-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.ed-kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center;box-shadow:var(--shadow)}
+.ed-kpi-val{font-family:'DM Serif Display',serif;font-size:36px;line-height:1}
+.ed-kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-top:4px;font-weight:600}
+.ed-section{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;margin:16px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--border)}
+
+/* NO-SHOW rows */
+tr.noshow-row td{background:var(--pink-light)!important;opacity:.85}
+tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
+.noshow-toggle{background:none;border:1.5px solid var(--border);border-radius:5px;padding:3px 10px;font-family:inherit;font-size:11px;cursor:pointer;font-weight:600;transition:all .15s;color:var(--muted);white-space:nowrap}
+.noshow-toggle:hover{border-color:var(--pink);color:var(--pink)}
+.noshow-toggle.marked{background:var(--pink-dim);border-color:var(--pink);color:var(--pink)}
 
 .band-thriving{color:var(--teal)}.band-healthy{color:var(--green)}.band-steady{color:var(--orange)}.band-low{color:var(--pink)}
 </style>
 </head>
 <body>
 
-<div id="loading">
+<!-- PASSWORD GATE -->
+<div id="pw-gate">
+  <div class="pw-box">
+    <div class="pw-logo">🐝 MH Buzz</div>
+    <div class="pw-sub">Host Companion — enter password to continue</div>
+    <input class="pw-input" type="password" id="pw-input" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')checkPw()">
+    <button class="pw-btn" onclick="checkPw()">Unlock</button>
+    <div class="pw-err" id="pw-err">Incorrect password — try again</div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading" style="display:none">
   <div class="spinner"></div>
   <div class="load-text">Loading from Google Sheets...</div>
 </div>
+
+<!-- APP (hidden until auth) -->
+<div id="app" style="display:none">
 
 <header>
   <div class="logo"><div class="logo-dot"></div>MH Buzz <span>Host Companion</span></div>
@@ -171,6 +218,7 @@ tr:hover td{background:var(--surface2)}
 
 <div class="tabs">
   <div class="tab active" onclick="showTab('overview',this)">📊 Overview</div>
+  <div class="tab event-day-tab" onclick="showTab('eventday',this)">📋 Event Day</div>
   <div class="tab" onclick="showTab('firsttimers',this)">🆕 First-Timers</div>
   <div class="tab" onclick="showTab('loyalty',this)">🏅 Loyalty</div>
   <div class="tab" onclick="showTab('plenty',this)">📈 PLENTY</div>
@@ -188,8 +236,54 @@ tr:hover td{background:var(--surface2)}
   <div class="grid-2">
     <div class="card"><div class="card-title">Alerts & Actions</div><div id="alerts"></div></div>
     <div class="card"><div class="card-title">Last 8 Events</div>
-      <table><thead><tr><th>Month</th><th>Booked</th><th>New</th><th>Returning</th><th>New %</th></tr></thead>
+      <table><thead><tr><th>Month</th><th>Booked</th><th>Attended</th><th>New</th><th>Returning</th><th>New %</th></tr></thead>
       <tbody id="recent-table"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- EVENT DAY -->
+<div class="page" id="tab-eventday">
+  <div class="section-head" id="ed-heading">Event Day</div>
+
+  <!-- Log actual attendance -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title">Log Actual Attendance</div>
+    <div class="plenty-form">
+      <div class="plenty-input-row">
+        <div class="input-group"><label>Event</label><input class="wide" type="text" id="ed-event-id" readonly></div>
+        <div class="input-group"><label>In the Room</label><input type="number" id="ed-actual" placeholder="e.g. 43" style="width:100px"></div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="save-btn orange" onclick="logActualAttendance()">Generate Sheet Row ↗</button>
+      </div>
+    </div>
+    <div class="save-note">Paste the generated row into your Events tab in Google Sheets (actual_attended column), then click Refresh.</div>
+    <div class="output-box" id="ed-output"></div>
+  </div>
+
+  <!-- Summary KPIs (populated after data loads) -->
+  <div class="ed-summary" id="ed-summary"></div>
+
+  <!-- Three lists side by side on desktop, stacked on mobile -->
+  <div class="grid-3" id="ed-lists">
+    <!-- ALL BOOKED -->
+    <div class="card">
+      <div class="card-title">All Booked — Alphabetical <span id="ed-booked-count" style="font-size:11px"></span></div>
+      <input class="search-box" id="ed-search-all" placeholder="Search..." oninput="filterEdList('all')" style="margin-bottom:8px">
+      <div id="ed-list-all" style="max-height:500px;overflow-y:auto"></div>
+    </div>
+    <!-- FIRST-TIMERS -->
+    <div class="card">
+      <div class="card-title">New This Month <span id="ed-new-count" style="color:var(--green);font-size:11px"></span></div>
+      <input class="search-box" id="ed-search-new" placeholder="Search..." oninput="filterEdList('new')" style="margin-bottom:8px">
+      <div id="ed-list-new" style="max-height:500px;overflow-y:auto"></div>
+    </div>
+    <!-- NO-SHOWS -->
+    <div class="card">
+      <div class="card-title">No-Shows <span id="ed-noshow-count" style="color:var(--pink);font-size:11px"></span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Tap <strong>No-show</strong> in the All Booked list to move people here. Notes save for the session.</div>
+      <div id="ed-list-noshow"></div>
     </div>
   </div>
 </div>
@@ -222,7 +316,7 @@ tr:hover td{background:var(--surface2)}
       <tbody id="top-table"></tbody></table>
     </div>
     <div class="card">
-      <div class="card-title" id="streak-card-title">Hot Streak — 4+ of Last 6 Events</div>
+      <div class="card-title" id="streak-card-title">Hot Streak</div>
       <table><thead><tr><th>Name</th><th>Company</th><th>Streak</th><th>Best/12m</th></tr></thead>
       <tbody id="streak-table"></tbody></table>
     </div>
@@ -232,7 +326,7 @@ tr:hover td{background:var(--surface2)}
       <table><thead><tr><th>Name</th><th>Email</th><th>Visits</th><th>Last Seen</th></tr></thead>
       <tbody id="lapsed-table"></tbody></table>
     </div>
-    <div class="card"><div class="card-title">Ambassador & Sponsor Candidates — 8+ Visits, Active Last 12m, No Role</div>
+    <div class="card"><div class="card-title">Candidates — 8+ Visits, Active Last 12m, No Role</div>
       <table><thead><tr><th>Name</th><th>Company</th><th>Visits</th><th>Last 12m</th></tr></thead>
       <tbody id="candidate-table"></tbody></table>
     </div>
@@ -263,12 +357,12 @@ tr:hover td{background:var(--surface2)}
             <div class="input-group"><label>Buzz+</label><input type="number" id="inp-bp" placeholder="1"></div>
             <div class="input-group"><label>Sponsors</label><input type="number" id="inp-sp" placeholder="1"></div>
           </div>
-          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <div style="margin-top:10px">
             <button class="save-btn" onclick="savePlentyEntry()">Generate Sheet Row ↗</button>
           </div>
         </div>
         <div class="save-note">Paste the generated row into your Plenty tab in Google Sheets, then click Refresh.</div>
-        <div id="plenty-output" style="display:none;margin-top:10px;padding:10px;background:var(--surface2);border-radius:6px;font-family:monospace;font-size:12px;color:var(--text);word-break:break-all"></div>
+        <div class="output-box" id="plenty-output"></div>
       </div>
     </div>
     <div class="card"><div class="card-title">Booking Curves — This Event vs Previous Month</div><div class="chart-wrap-lg"><canvas id="ch-plenty"></canvas></div></div>
@@ -292,8 +386,8 @@ tr:hover td{background:var(--surface2)}
     <div class="card-title">How the Score Works</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;font-size:13px;line-height:1.6;color:var(--muted)">
       <div><strong style="color:var(--teal)">Acquisition 35%</strong><br>% of room who are first-timers. Signals marketing reach.</div>
-      <div><strong style="color:var(--orange)">Retention 40%</strong><br>% of last month's attendees who came back. Truest measure of experience quality.</div>
-      <div><strong style="color:var(--green)">Momentum 25%</strong><br>3-month trend vs prior 3 months. Growing, holding, or sliding?</div>
+      <div><strong style="color:var(--orange)">Retention 40%</strong><br>% of last month's attendees who returned. Truest measure of experience quality.</div>
+      <div><strong style="color:var(--green)">Momentum 25%</strong><br>3-month trend vs prior 3. Growing, holding, or sliding?</div>
     </div>
     <div style="margin-top:10px;font-size:11px;color:var(--muted)">
       <span class="band-thriving">■ 80–100 Thriving</span> &nbsp;
@@ -323,45 +417,50 @@ tr:hover td{background:var(--surface2)}
   </div>
 </div>
 
+</div><!-- /app -->
+
 <script>
-// ─── CONFIG ────────────────────────────────────────────────────────
-const SHEETS = {
-  events:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vTHDeTUv7JOI_S-vHofkBzK8PkHJbS_wQKHR6gU-Dyi1ZUDAGNtZgrBUbixMO24KERCTr-xfYdDCCKB/pub?gid=2001726275&single=true&output=csv',
-  attendance: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTHDeTUv7JOI_S-vHofkBzK8PkHJbS_wQKHR6gU-Dyi1ZUDAGNtZgrBUbixMO24KERCTr-xfYdDCCKB/pub?gid=665572416&single=true&output=csv',
-  people:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vTHDeTUv7JOI_S-vHofkBzK8PkHJbS_wQKHR6gU-Dyi1ZUDAGNtZgrBUbixMO24KERCTr-xfYdDCCKB/pub?gid=1451076520&single=true&output=csv',
-  plenty:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vTHDeTUv7JOI_S-vHofkBzK8PkHJbS_wQKHR6gU-Dyi1ZUDAGNtZgrBUbixMO24KERCTr-xfYdDCCKB/pub?gid=1245784847&single=true&output=csv',
-};
+// ─── PASSWORD ──────────────────────────────────────────────────────
+// Change 'buzz2024' to whatever password you want
+const APP_PASSWORD = 'buzz2024';
 
-// ─── STATE ─────────────────────────────────────────────────────────
-let DB = { events:[], attendance:[], people:[], plenty:[] };
-let charts = {};
-let peopleFilter = 'all';
-let ftSelectedDate = null;
-let streakWindow = 6;
-// In-memory notes store (keyed by person_id, persists for session)
-let notes = {};
-
-// ─── LOAD ──────────────────────────────────────────────────────────
-function parseCSV(text) {
-  const lines = text.trim().split('\n');
-  const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
-  return lines.slice(1).map(line=>{
-    const vals=[]; let cur='',inQ=false;
-    for(let c of line){
-      if(c==='"') inQ=!inQ;
-      else if(c===','&&!inQ){vals.push(cur.trim());cur='';}
-      else cur+=c;
-    }
-    vals.push(cur.trim());
-    const obj={};
-    headers.forEach((h,i)=>obj[h]=(vals[i]||'').replace(/^"|"$/g,''));
-    return obj;
-  }).filter(r=>Object.values(r).some(v=>v));
+function checkPw(){
+  const v=document.getElementById('pw-input').value;
+  if(v===APP_PASSWORD){
+    document.getElementById('pw-gate').style.display='none';
+    document.getElementById('app').style.display='block';
+    loadAll();
+  } else {
+    const err=document.getElementById('pw-err');
+    err.style.display='block';
+    document.getElementById('pw-input').value='';
+    setTimeout(()=>err.style.display='none',2500);
+  }
 }
 
+// ─── CONFIG ────────────────────────────────────────────────────────
+// Data fetched securely via Apps Script — no raw CSV URLs exposed
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxFwsTaVsTi6HV-uMvyejn2D7pqFI2lvDejYaDKvYlRqf8hI7giVDGu1V8_UU_eAxeElw/exec';
+const SCRIPT_KEY = 'mhbuzz2024';
+const SHEET_NAMES = { events:'Events', attendance:'Attendance', people:'People', plenty:'Plenty' };
+
+// ─── STATE ─────────────────────────────────────────────────────────
+let DB={events:[],attendance:[],people:[],plenty:[]};
+let charts={};
+let peopleFilter='all';
+let ftSelectedDate=null;
+let streakWindow=6;
+let notes={};          // person_id → note string (session)
+let noShows=new Set(); // person_ids marked as no-show (session)
+let edEventDate=null;  // which event Event Day tab is showing
+
+// ─── LOAD ──────────────────────────────────────────────────────────
 async function fetchSheet(name){
-  const r=await fetch(SHEETS[name]+'&t='+Date.now());
-  return parseCSV(await r.text());
+  const url=`${SCRIPT_URL}?sheet=${encodeURIComponent(SHEET_NAMES[name])}&key=${SCRIPT_KEY}&t=${Date.now()}`;
+  const r=await fetch(url);
+  const data=await r.json();
+  if(data.error) throw new Error(data.error);
+  return data;
 }
 
 async function loadAll(){
@@ -372,8 +471,8 @@ async function loadAll(){
     ]);
     DB={events,attendance,people,plenty};
     destroyCharts();
-    // Set ftSelectedDate to most recent event
     ftSelectedDate=DB.events.length?DB.events[DB.events.length-1].date:null;
+    edEventDate=ftSelectedDate;
     render();
     document.getElementById('loading').style.display='none';
   }catch(e){
@@ -407,27 +506,23 @@ function isTeam(p){
   return['host','ambassador','sponsor','buzz_plus','regional_lead','former_regional_lead','regional_host','corporate_wilson_browne'].includes(p.role);
 }
 
-function attended(personId,date){
-  return DB.attendance.some(a=>a.person_id===personId&&a.date===date);
+function attended(pid,date){
+  return DB.attendance.some(a=>a.person_id===pid&&a.date===date);
 }
 
-function personDates(personId){
-  return DB.attendance.filter(a=>a.person_id===personId).map(a=>a.date).sort();
+function personDates(pid){
+  return DB.attendance.filter(a=>a.person_id===pid).map(a=>a.date).sort();
 }
 
 function makeChart(id,type,data,opts={}){
   const ctx=document.getElementById(id);
   if(!ctx) return;
   if(charts[id]) charts[id].destroy();
-  const base={
-    plugins:{legend:{display:false}},
-    scales:{
-      x:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:10},maxTicksLimit:14}},
-      y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:11}}}
-    }
-  };
+  const base={plugins:{legend:{display:false}},scales:{
+    x:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:10},maxTicksLimit:14}},
+    y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:11}}}
+  }};
   charts[id]=new Chart(ctx,{type,data,options:mergeDeep(base,opts)});
-  return charts[id];
 }
 
 function mergeDeep(a,b){
@@ -443,13 +538,16 @@ function mergeDeep(a,b){
 function render(){
   const events=DB.events;
   const latest=events[events.length-1];
-  const last6Dates=events.slice(-6).map(e=>e.date);
   const last3Dates=events.slice(-3).map(e=>e.date);
 
   document.getElementById('header-meta').innerHTML=
     `Last event: <strong>${latest?.label||'—'}</strong> &nbsp;·&nbsp; ${num(latest?.total_booked)} booked &nbsp;·&nbsp; <strong style="color:var(--teal)">${num(latest?.total_new)} first-timers</strong>`;
 
-  renderOverview(events,latest,last6Dates,last3Dates);
+  // Pre-fill event day event ID
+  if(latest) document.getElementById('ed-event-id').value=latest.event_id||latest.label||'';
+
+  renderOverview(events,latest,last3Dates);
+  renderEventDay(events);
   renderFirstTimers(events);
   renderLoyalty(events);
   renderPlenty(events);
@@ -458,14 +556,15 @@ function render(){
 }
 
 // ─── OVERVIEW ──────────────────────────────────────────────────────
-function renderOverview(events,latest,last6Dates,last3Dates){
+function renderOverview(events,latest,last3Dates){
   const people=DB.people;
   const nonTeam=people.filter(p=>!isTeam(p));
   const regulars=nonTeam.filter(p=>num(p.total_attended)>=5);
   const onceDone=nonTeam.filter(p=>num(p.total_attended)===1);
+  const last6Dates=events.slice(-6).map(e=>e.date);
 
   document.getElementById('kpi-overview').innerHTML=`
-    <div class="kpi accent-teal"><div class="kpi-label">Last Event</div><div class="kpi-value c-teal">${num(latest?.total_booked)}</div><div class="kpi-sub">${latest?.label}</div></div>
+    <div class="kpi accent-teal"><div class="kpi-label">Last Event</div><div class="kpi-value c-teal">${num(latest?.total_booked)}</div><div class="kpi-sub">${latest?.label} booked</div></div>
     <div class="kpi accent-green"><div class="kpi-label">First-Timers</div><div class="kpi-value c-green">${num(latest?.total_new)}</div><div class="kpi-sub">${latest?.total_booked?Math.round(num(latest.total_new)/num(latest.total_booked)*100):0}% of room</div></div>
     <div class="kpi"><div class="kpi-label">Returning</div><div class="kpi-value">${num(latest?.total_returning)}</div><div class="kpi-sub">familiar faces</div></div>
     <div class="kpi"><div class="kpi-label">All-Time Visitors</div><div class="kpi-value">${people.length}</div><div class="kpi-sub">unique people</div></div>
@@ -491,21 +590,24 @@ function renderOverview(events,latest,last6Dates,last3Dates){
     ]
   },{plugins:{legend:{display:true,labels:{color:'#6B7280',font:{size:11}}}}});
 
-  document.getElementById('recent-table').innerHTML=events.slice(-8).reverse().map(e=>`
-    <tr><td>${e.label}</td><td><strong>${num(e.total_booked)}</strong></td>
+  document.getElementById('recent-table').innerHTML=events.slice(-8).reverse().map(e=>{
+    const actual=num(e.actual_attended)||num(e.total_booked);
+    return `<tr><td>${e.label}</td><td><strong>${num(e.total_booked)}</strong></td>
+    <td>${e.actual_attended?`<strong class="c-teal">${num(e.actual_attended)}</strong>`:'<span style="color:var(--muted)">—</span>'}</td>
     <td><span class="c-green"><strong>${num(e.total_new)}</strong></span></td>
     <td>${num(e.total_returning)}</td>
-    <td>${num(e.total_booked)?Math.round(num(e.total_new)/num(e.total_booked)*100):0}%</td></tr>`).join('');
+    <td>${actual?Math.round(num(e.total_new)/actual*100):0}%</td></tr>`;
+  }).join('');
 
   const alerts=[];
   const ftCount=num(latest?.total_new);
   if(ftCount>0) alerts.push({cls:'teal',icon:'🟢',text:`<strong>${ftCount} first-timers</strong> from ${latest.label} need a follow-up within 48 hours. See the First-Timers tab.`});
   const lapsed=DB.people.filter(p=>!isTeam(p)&&num(p.total_attended)>=3&&!last3Dates.some(d=>attended(p.person_id,d)));
-  if(lapsed.length) alerts.push({cls:'orange',icon:'🟡',text:`<strong>${lapsed.length} regulars</strong> haven't been seen in 3+ months. Check the Loyalty tab.`});
+  if(lapsed.length) alerts.push({cls:'orange',icon:'🟡',text:`<strong>${lapsed.length} regulars</strong> haven't been seen in 3+ months. Check Loyalty.`});
   const phil=DB.people.find(p=>p.role==='buzz_plus');
   if(phil){
-    const philRecent=last6Dates.filter(d=>attended(phil.person_id,d)).length;
-    if(philRecent<3) alerts.push({cls:'pink',icon:'🔵',text:`<strong>${phil.name_first} ${phil.name_last}</strong> (Buzz+) has attended ${philRecent}/6 recent events. Worth a touchpoint.`});
+    const r=last6Dates.filter(d=>attended(phil.person_id,d)).length;
+    if(r<3) alerts.push({cls:'pink',icon:'🔵',text:`<strong>${phil.name_first} ${phil.name_last}</strong> (Buzz+) has attended ${r}/6 recent events. Worth a touchpoint.`});
   }
   const odRate=Math.round(onceDone.length/Math.max(nonTeam.length,1)*100);
   if(odRate>45) alerts.push({cls:'orange',icon:'⚠️',text:`<strong>${odRate}% of all visitors came once and never returned.</strong> First-timer follow-up is your highest-leverage action.`});
@@ -513,6 +615,136 @@ function renderOverview(events,latest,last6Dates,last3Dates){
   document.getElementById('alerts').innerHTML=alerts.map(a=>`
     <div class="alert ${a.cls}"><div class="alert-icon">${a.icon}</div><div class="alert-text">${a.text}</div></div>`).join('')
     ||'<div class="empty">No urgent alerts — looking good.</div>';
+}
+
+// ─── EVENT DAY ─────────────────────────────────────────────────────
+function renderEventDay(events){
+  const latest=events[events.length-1];
+  if(!latest){document.getElementById('ed-heading').textContent='Event Day — no data';return;}
+
+  document.getElementById('ed-heading').textContent=`Event Day — ${latest.label}`;
+
+  // People booked for this event (attended = true in attendance tab for this date)
+  const booked=DB.people.filter(p=>attended(p.person_id,latest.date)&&!isTeam(p));
+  // First-timers at this event
+  const newPeople=booked.filter(p=>{
+    const dates=personDates(p.person_id);
+    return dates[0]===latest.date;
+  });
+
+  // Sort alphabetically by first name (as Buzz app does)
+  const alpha=(a,b)=>`${a.name_first}${a.name_last}`.localeCompare(`${b.name_first}${b.name_last}`);
+  const sortedBooked=[...booked].sort(alpha);
+  const sortedNew=[...newPeople].sort(alpha);
+
+  // KPI summary
+  const nsCount=noShows.size;
+  const actualBooked=sortedBooked.length;
+  document.getElementById('ed-summary').innerHTML=`
+    <div class="ed-kpi"><div class="ed-kpi-val c-teal">${actualBooked}</div><div class="ed-kpi-label">Booked</div></div>
+    <div class="ed-kpi"><div class="ed-kpi-val c-green">${sortedNew.length}</div><div class="ed-kpi-label">First-Timers</div></div>
+    <div class="ed-kpi"><div class="ed-kpi-val c-orange">${actualBooked-sortedNew.length}</div><div class="ed-kpi-label">Returning</div></div>
+    <div class="ed-kpi"><div class="ed-kpi-val c-pink">${nsCount}</div><div class="ed-kpi-label">No-Shows</div></div>
+    <div class="ed-kpi"><div class="ed-kpi-val">${actualBooked-nsCount}</div><div class="ed-kpi-label">In the Room</div></div>`;
+
+  document.getElementById('ed-booked-count').textContent=`${actualBooked} people`;
+  document.getElementById('ed-new-count').textContent=`${sortedNew.length} people`;
+  document.getElementById('ed-noshow-count').textContent=nsCount?`${nsCount} marked`:'none yet';
+
+  renderEdList('all', sortedBooked);
+  renderEdList('new', sortedNew);
+  renderNoShows(booked);
+}
+
+function renderEdList(type, people){
+  const q=(document.getElementById(`ed-search-${type}`)?.value||'').toLowerCase();
+  const filtered=q?people.filter(p=>`${p.name_first} ${p.name_last} ${p.company||''}`.toLowerCase().includes(q)):people;
+
+  const rows=filtered.map(p=>{
+    const pid=p.person_id||`${p.name_first}_${p.name_last}`;
+    const isNS=noShows.has(pid);
+    const visits=num(p.total_attended);
+    const isNew=type==='all'&&(()=>{const d=personDates(p.person_id);return d[0]===DB.events[DB.events.length-1]?.date;})();
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);${isNS?'opacity:.5':''}">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px">${p.name_first} ${p.name_last}
+          ${isNew?'<span class="badge b-new" style="margin-left:4px">New</span>':''}
+          ${isNS?'<span class="badge b-noshow" style="margin-left:4px">No-show</span>':''}
+        </div>
+        <div style="font-size:11px;color:var(--muted)">${p.company||'—'} ${type==='all'?`· ${visits} visit${visits!==1?'s':''}`:''}${p.email?` · ${p.email}`:''}</div>
+      </div>
+      ${type==='all'?`<button class="noshow-toggle ${isNS?'marked':''}" onclick="toggleNoShow('${pid}')">${isNS?'Undo':'No-show'}</button>`:''}
+    </div>`;
+  }).join('');
+
+  const el=document.getElementById(`ed-list-${type}`);
+  if(el) el.innerHTML=rows||`<div class="empty">No results</div>`;
+}
+
+function filterEdList(type){
+  const events=DB.events;
+  const latest=events[events.length-1];
+  if(!latest) return;
+  const booked=DB.people.filter(p=>attended(p.person_id,latest.date)&&!isTeam(p));
+  const alpha=(a,b)=>`${a.name_first}${a.name_last}`.localeCompare(`${b.name_first}${b.name_last}`);
+  if(type==='all') renderEdList('all',[...booked].sort(alpha));
+  if(type==='new'){
+    const newP=booked.filter(p=>{const d=personDates(p.person_id);return d[0]===latest.date;});
+    renderEdList('new',[...newP].sort(alpha));
+  }
+}
+
+function toggleNoShow(pid){
+  if(noShows.has(pid)) noShows.delete(pid);
+  else noShows.add(pid);
+  renderEventDay(DB.events);
+}
+
+function renderNoShows(allBooked){
+  const nsList=allBooked.filter(p=>{
+    const pid=p.person_id||`${p.name_first}_${p.name_last}`;
+    return noShows.has(pid);
+  }).sort((a,b)=>`${a.name_first}${a.name_last}`.localeCompare(`${b.name_first}${b.name_last}`));
+
+  const rows=nsList.map(p=>{
+    const pid=p.person_id||`${p.name_first}_${p.name_last}`;
+    const saved=notes[`ns_${pid}`]||'';
+    return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <span style="font-weight:600;font-size:13px">${p.name_first} ${p.name_last}</span>
+        <button class="noshow-toggle" onclick="toggleNoShow('${pid}')">Undo</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:5px">${p.company||'—'}${p.email?` · ${p.email}`:''}</div>
+      <div class="note-cell">
+        <textarea id="nsnote-${pid}" placeholder="Reason / follow-up note...">${saved}</textarea>
+        <button class="note-save" onclick="saveNsNote('${pid}')">Save</button>
+        <div class="note-saved" id="nssaved-${pid}">✓ Saved</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('ed-list-noshow').innerHTML=rows||'<div class="empty">No no-shows marked yet.</div>';
+}
+
+function saveNsNote(pid){
+  const ta=document.getElementById(`nsnote-${pid}`);
+  if(!ta) return;
+  notes[`ns_${pid}`]=ta.value;
+  const el=document.getElementById(`nssaved-${pid}`);
+  if(el){el.style.display='block';setTimeout(()=>el.style.display='none',1800);}
+}
+
+function logActualAttendance(){
+  const actual=document.getElementById('ed-actual').value;
+  if(!actual){alert('Please enter the number of people actually in the room.');return;}
+  const latest=DB.events[DB.events.length-1];
+  const evId=latest?.event_id||'EVT???';
+  const out=document.getElementById('ed-output');
+  out.style.display='block';
+  out.innerHTML=`<strong>Update this row in your Events tab:</strong><br><br>
+Find event <code>${evId}</code> (${latest?.label}) and set <code>actual_attended = ${actual}</code><br><br>
+<em style="color:var(--muted)">Or add an actual_attended column if it doesn't exist yet.</em>`;
+  document.getElementById('ed-actual').value='';
 }
 
 // ─── FIRST-TIMERS ──────────────────────────────────────────────────
@@ -531,7 +763,6 @@ function renderFirstTimers(events){
 
   document.getElementById('ft-export-note').textContent=ft.length?`${ft.length} people ready to export`:'';
 
-  // Table with inline notes
   const rows=ft.map(p=>{
     const pid=p.person_id||`${p.name_first}_${p.name_last}`;
     const saved=notes[pid]||'';
@@ -541,21 +772,18 @@ function renderFirstTimers(events){
       <td style="font-size:12px">${p.email||'—'}</td>
       <td style="font-size:12px">${p.mobile||'—'}</td>
       <td class="note-cell">
-        <textarea id="note-${pid}" placeholder="Add a follow-up note...">${saved}</textarea>
+        <textarea id="note-${pid}" placeholder="Follow-up note...">${saved}</textarea>
         <button class="note-save" onclick="saveNote('${pid}')">Save note</button>
         <div class="note-saved" id="saved-${pid}">✓ Saved</div>
-      </td>
-    </tr>`;
+      </td></tr>`;
   }).join('');
 
   document.getElementById('ft-list').innerHTML=`
     <p style="font-size:13px;color:var(--muted);margin-bottom:10px">
-      <strong style="color:var(--teal)">${ft.length} people</strong> attended for the first time at ${selEv?.label}. Notes save locally for this session — export CSV includes them.
+      <strong style="color:var(--teal)">${ft.length} people</strong> attended for the first time at ${selEv?.label}. Notes save for this session and export with the CSV.
     </p>
-    <table>
-      <thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Mobile</th><th style="width:220px">Follow-up Note</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="5" class="empty">No data for this month</td></tr>'}</tbody>
-    </table>`;
+    <table><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Mobile</th><th style="width:220px">Follow-up Note</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="5" class="empty">No data for this month</td></tr>'}</tbody></table>`;
 
   makeChart('ch-ft','bar',{
     labels:events.map(e=>e.label),
@@ -575,8 +803,8 @@ function saveNote(pid){
   const ta=document.getElementById('note-'+pid);
   if(!ta) return;
   notes[pid]=ta.value;
-  const saved=document.getElementById('saved-'+pid);
-  if(saved){saved.style.display='block';setTimeout(()=>saved.style.display='none',1800);}
+  const el=document.getElementById('saved-'+pid);
+  if(el){el.style.display='block';setTimeout(()=>el.style.display='none',1800);}
 }
 
 function exportFTcsv(){
@@ -608,36 +836,28 @@ function setStreakWindow(w,btn){
 }
 
 function renderLoyalty(events){
-  const swDates=events.slice(-streakWindow).map(e=>e.date);  // newest first after reverse
+  const swDates=events.slice(-streakWindow).map(e=>e.date);
   const last12Dates=events.slice(-12).map(e=>e.date);
   const last3Dates=events.slice(-3).map(e=>e.date);
-
   const people=DB.people.filter(p=>!isTeam(p));
 
-  // visits in last 12 months
-  const getL12=(p)=>last12Dates.filter(d=>attended(p.person_id,d)).length;
-  // visits in streak window
-  const getSW=(p)=>swDates.filter(d=>attended(p.person_id,d)).length;
+  const getSW=p=>swDates.filter(d=>attended(p.person_id,d)).length;
+  const getL12=p=>last12Dates.filter(d=>attended(p.person_id,d)).length;
 
-  // Longest consecutive streak in last 12 months
   function longestStreak(p){
     let max=0,cur=0;
-    [...last12Dates].reverse().forEach(d=>{  // oldest to newest
-      if(attended(p.person_id,d)) cur++;
-      else cur=0;
+    [...last12Dates].sort().forEach(d=>{
+      if(attended(p.person_id,d)) cur++;else cur=0;
       if(cur>max) max=cur;
     });
     return max;
   }
 
-  // Streak dots: newest on left
   function streakDots(p,windowDates){
-    // windowDates already newest→oldest from events.slice(-N) (events are asc, so reverse)
-    const reversedDates=[...windowDates].reverse(); // now newest first
-    return reversedDates.map((d,i)=>{
+    const reversed=[...windowDates].reverse();
+    return reversed.map((d,i)=>{
       const hit=attended(p.person_id,d);
-      const isRecent=i<3; // left 3 = most recent
-      return `<div class="sdot ${hit?(isRecent?'hit':'hit-old'):''}"></div>`;
+      return `<div class="sdot ${hit?(i<3?'hit':'hit-old'):''}"></div>`;
     }).join('');
   }
 
@@ -653,12 +873,11 @@ function renderLoyalty(events){
       <td><div class="streak-bar">${streakDots(p,swDates)}</div></td></tr>`;
   }).join('');
 
-  document.getElementById('streak-card-title').textContent=`Hot Streak — ${Math.ceil(streakWindow*0.67)}+ of Last ${streakWindow} Events`;
-  const threshold=Math.ceil(streakWindow*0.67); // ~67% attendance
+  const threshold=Math.ceil(streakWindow*0.67);
+  document.getElementById('streak-card-title').textContent=`Hot Streak — ${threshold}+ of Last ${streakWindow} Events`;
   const streakers=people.filter(p=>getSW(p)>=threshold).sort((a,b)=>getSW(b)-getSW(a));
   document.getElementById('streak-table').innerHTML=streakers.map(p=>{
-    const sw=getSW(p);
-    const best=longestStreak(p);
+    const sw=getSW(p),best=longestStreak(p);
     return `<tr>
       <td><strong>${p.name_first} ${p.name_last}</strong></td>
       <td style="font-size:12px;color:var(--muted)">${p.company||'—'}</td>
@@ -678,17 +897,14 @@ function renderLoyalty(events){
       <td style="color:var(--muted);font-size:12px">${lastLabel}</td></tr>`;
   }).join('')||'<tr><td colspan="4" class="empty">No lapsed regulars — great sign.</td></tr>';
 
-  // Candidates: 8+ visits AND attended at least once in last 12 months
   const candidates=people.filter(p=>!p.role&&num(p.total_attended)>=8&&getL12(p)>0)
     .sort((a,b)=>num(b.total_attended)-num(a.total_attended)).slice(0,10);
-  document.getElementById('candidate-table').innerHTML=candidates.map(p=>{
-    const l12=getL12(p);
-    return `<tr>
-      <td><strong>${p.name_first} ${p.name_last}</strong></td>
-      <td style="font-size:12px;color:var(--muted)">${p.company||'—'}</td>
-      <td><strong class="c-teal">${p.total_attended}</strong></td>
-      <td><strong style="color:var(--green)">${l12} visits</strong></td></tr>`;
-  }).join('')||'<tr><td colspan="4" class="empty">No active candidates</td></tr>';
+  document.getElementById('candidate-table').innerHTML=candidates.map(p=>`<tr>
+    <td><strong>${p.name_first} ${p.name_last}</strong></td>
+    <td style="font-size:12px;color:var(--muted)">${p.company||'—'}</td>
+    <td><strong class="c-teal">${p.total_attended}</strong></td>
+    <td><strong style="color:var(--green)">${getL12(p)}</strong></td></tr>`)
+    .join('')||'<tr><td colspan="4" class="empty">No active candidates</td></tr>';
 
   const onceDone=people.filter(p=>num(p.total_attended)===1);
   document.getElementById('kpi-loyalty').innerHTML=`
@@ -708,22 +924,14 @@ function renderPlenty(events){
     {key:'D-4',label:'Thu'},{key:'D-3',label:'Fri'},{key:'D-2',label:'Wknd'},
     {key:'D-1',label:'Mon'},{key:'event_day',label:'Day'},
   ];
-
-  // Identify next/current event:
-  // If the most recent event has PLENTY data marked as event_day, it's done.
-  // Next event = last event entry (host is tracking the upcoming one)
-  // We look for the event that has the most recent PLENTY data
-  const nextEv=events[events.length-1];
-  const prevEv=events[events.length-2];
-
+  const nextEv=events[events.length-1],prevEv=events[events.length-2];
   document.getElementById('plenty-title').textContent=`${nextEv?.label||'Next Event'} — Booking Tracker`;
-  document.getElementById('plenty-subtitle').textContent=
-    prevEv?`Comparing against ${prevEv.label} booking curve (orange)`:'';
+  document.getElementById('plenty-subtitle').textContent=prevEv?`Comparing against ${prevEv.label} (orange)`:'';
 
   const nextPlenty=plenty.filter(p=>p.event_id===nextEv?.event_id);
   const prevPlenty=plenty.filter(p=>p.event_id===prevEv?.event_id);
-
   let lastKnownT=null,lastKnownCp=null;
+
   const cpHtml=checkpoints.map((cp,idx)=>{
     const row=nextPlenty.find(p=>p.checkpoint===cp.key);
     const t=row?.total_booked?parseInt(row.total_booked):null;
@@ -739,7 +947,6 @@ function renderPlenty(events){
   }).join('');
   document.getElementById('plenty-checkpoints').innerHTML=cpHtml;
 
-  // Projection
   let ratios=[];
   if(lastKnownCp&&lastKnownT){
     events.slice(0,-1).forEach(ev=>{
@@ -753,17 +960,15 @@ function renderPlenty(events){
   if(ratios.length&&lastKnownT){
     ratios.sort((a,b)=>a-b);
     const med=ratios[Math.floor(ratios.length/2)];
-    const low=ratios[Math.floor(ratios.length*0.25)];
-    const high=ratios[Math.floor(ratios.length*0.75)];
+    const low=ratios[Math.floor(ratios.length*.25)];
+    const high=ratios[Math.floor(ratios.length*.75)];
     const proj=Math.round(lastKnownT*med);
-    const projLow=Math.round(lastKnownT*low);
-    const projHigh=Math.round(lastKnownT*high);
     document.getElementById('proj-value').textContent=proj;
-    document.getElementById('proj-range').textContent=`Range ${projLow}–${projHigh} · ${ratios.length} comparable months`;
+    document.getElementById('proj-range').textContent=`Range ${Math.round(lastKnownT*low)}–${Math.round(lastKnownT*high)} · ${ratios.length} comparable months`;
     const avg6=events.slice(-7,-1).reduce((s,e)=>s+num(e.total_booked),0)/6;
     let tlC='tl-green',tlT='On track 🟢';
-    if(proj<avg6*0.8){tlC='tl-pink';tlT='Below average — push marketing 🔴';}
-    else if(proj<avg6*0.9){tlC='tl-orange';tlT='Slightly low — keep an eye on it 🟡';}
+    if(proj<avg6*.8){tlC='tl-pink';tlT='Below average — push marketing 🔴';}
+    else if(proj<avg6*.9){tlC='tl-orange';tlT='Slightly low — keep an eye on it 🟡';}
     document.getElementById('proj-traffic').innerHTML=`<div class="traffic-light ${tlC}">${tlT}</div>`;
   }else{
     document.getElementById('proj-value').textContent='—';
@@ -771,21 +976,11 @@ function renderPlenty(events){
     document.getElementById('proj-traffic').innerHTML='';
   }
 
-  // Comparison chart: this event vs previous month only
   const datasets=[];
-  const prevData=checkpoints.slice(0,-1).map(cp=>{
-    const row=prevPlenty.find(p=>p.checkpoint===cp.key);
-    return row?.total_booked?parseInt(row.total_booked):null;
-  });
-  const nextData=checkpoints.slice(0,-1).map(cp=>{
-    const row=nextPlenty.find(p=>p.checkpoint===cp.key);
-    return row?.total_booked?parseInt(row.total_booked):null;
-  });
-  if(prevData.some(v=>v)){
-    datasets.push({label:prevEv?.label,data:prevData,borderColor:'#F39200',backgroundColor:'rgba(243,146,0,0.08)',tension:0.3,spanGaps:true,borderDash:[4,3],pointRadius:3,pointBackgroundColor:'#F39200'});
-  }
-  datasets.push({label:nextEv?.label,data:nextData,borderColor:'#00A19A',backgroundColor:'rgba(0,161,154,0.08)',tension:0.3,spanGaps:true,borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#00A19A'});
-
+  const prevData=checkpoints.slice(0,-1).map(cp=>{const r=prevPlenty.find(p=>p.checkpoint===cp.key);return r?.total_booked?parseInt(r.total_booked):null;});
+  const nextData=checkpoints.slice(0,-1).map(cp=>{const r=nextPlenty.find(p=>p.checkpoint===cp.key);return r?.total_booked?parseInt(r.total_booked):null;});
+  if(prevData.some(v=>v)) datasets.push({label:prevEv?.label,data:prevData,borderColor:'#F39200',backgroundColor:'rgba(243,146,0,0.08)',tension:.3,spanGaps:true,borderDash:[4,3],pointRadius:3,pointBackgroundColor:'#F39200'});
+  datasets.push({label:nextEv?.label,data:nextData,borderColor:'#00A19A',backgroundColor:'rgba(0,161,154,0.08)',tension:.3,spanGaps:true,borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#00A19A'});
   makeChart('ch-plenty','line',{labels:checkpoints.slice(0,-1).map(c=>c.label),datasets},{
     plugins:{legend:{display:true,labels:{color:'#6B7280',font:{size:11},boxWidth:14}}}
   });
@@ -798,16 +993,12 @@ function savePlentyEntry(){
   const nextEv=DB.events[DB.events.length-1];
   const evId=nextEv?.event_id||'EVT???';
   const dateStr=today.toISOString().split('T')[0];
-  const l=document.getElementById('inp-l').value;
-  const e=document.getElementById('inp-e').value;
-  const wb=document.getElementById('inp-wb').value;
-  const bp=document.getElementById('inp-bp').value;
-  const sp=document.getElementById('inp-sp').value;
+  const[l,e,wb,bp,sp]=['inp-l','inp-e','inp-wb','inp-bp','inp-sp'].map(id=>document.getElementById(id).value);
   const out=document.getElementById('plenty-output');
   out.style.display='block';
   out.innerHTML=`<strong>Copy this row into your Plenty tab:</strong><br><br>
 <code>${evId}, ${dateStr}, D-log, 0, ${t}, ${l||''}, ${e||''}, ${wb||''}, ${bp||''}, ${sp||''}</code>
-<br><br><em style="color:var(--muted)">Columns: event_id, date, checkpoint, paid, total_booked, linkedin, eventbrite, wilson_browne, buzz_plus, sponsors</em>`;
+<br><br><em style="color:var(--muted)">event_id · date · checkpoint · paid · total_booked · linkedin · eventbrite · wilson_browne · buzz_plus · sponsors</em>`;
   ['inp-t','inp-l','inp-e','inp-wb','inp-bp','inp-sp'].forEach(id=>document.getElementById(id).value='');
 }
 
@@ -821,10 +1012,8 @@ function calcHealth(idx){
   const prior3=events.slice(Math.max(0,idx-4),idx-1);
   const priorAvg=prior3.reduce((s,e)=>s+num(e.total_booked),0)/Math.max(prior3.length,1);
   const momRaw=priorAvg>0?num(ev.total_booked)/priorAvg:1;
-  const acq=Math.min(100,acqRaw*250);
-  const ret=Math.min(100,retRaw*120);
-  const mom=Math.min(100,momRaw*80+20);
-  return{total:Math.round(acq*0.35+ret*0.40+mom*0.25),acq:Math.round(acq),ret:Math.round(ret),mom:Math.round(mom),acqRaw,retRaw,momRaw};
+  const acq=Math.min(100,acqRaw*250),ret=Math.min(100,retRaw*120),mom=Math.min(100,momRaw*80+20);
+  return{total:Math.round(acq*.35+ret*.40+mom*.25),acq:Math.round(acq),ret:Math.round(ret),mom:Math.round(mom),acqRaw,retRaw,momRaw};
 }
 
 function scoreStyle(s){
@@ -849,7 +1038,7 @@ function renderHealth(events){
   const scores=events.map((_,i)=>i===0?null:calcHealth(i)?.total??null);
   makeChart('ch-health','line',{
     labels:events.map(e=>e.label),
-    datasets:[{label:'Health Score',data:scores,borderColor:'#00A19A',backgroundColor:'rgba(0,161,154,0.08)',tension:0.4,fill:true,pointBackgroundColor:'#00A19A',pointRadius:3,spanGaps:true}]
+    datasets:[{label:'Health Score',data:scores,borderColor:'#00A19A',backgroundColor:'rgba(0,161,154,0.08)',tension:.4,fill:true,pointBackgroundColor:'#00A19A',pointRadius:3,spanGaps:true}]
   },{scales:{x:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:10},maxTicksLimit:14}},y:{min:0,max:100,grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:11}}}}});
 }
 
@@ -900,8 +1089,6 @@ function showTab(name,el){
   document.getElementById('tab-'+name).classList.add('active');
   el.classList.add('active');
 }
-
-loadAll();
 </script>
 </body>
 </html>
