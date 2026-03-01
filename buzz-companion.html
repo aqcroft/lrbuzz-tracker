@@ -9,166 +9,149 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --teal: #00A19A;
-  --teal-light: #E6F7F6;
-  --teal-dim: rgba(0,161,154,0.12);
-  --green: #B6BD00;
-  --green-light: #F5F6E6;
-  --green-dim: rgba(182,189,0,0.12);
-  --orange: #F39200;
-  --orange-light: #FEF4E6;
-  --orange-dim: rgba(243,146,0,0.12);
-  --pink: #D60B52;
-  --pink-light: #FCE8EF;
-  --pink-dim: rgba(214,11,82,0.12);
-  --bg: #F4F5F7;
-  --surface: #FFFFFF;
-  --surface2: #F0F1F3;
-  --border: rgba(0,0,0,0.08);
-  --text: #1A1C20;
-  --muted: #6B7280;
-  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05);
+  --teal:#00A19A;--teal-light:#E6F7F6;--teal-dim:rgba(0,161,154,0.12);
+  --green:#B6BD00;--green-light:#F5F6E6;--green-dim:rgba(182,189,0,0.12);
+  --orange:#F39200;--orange-light:#FEF4E6;--orange-dim:rgba(243,146,0,0.12);
+  --pink:#D60B52;--pink-light:#FCE8EF;--pink-dim:rgba(214,11,82,0.12);
+  --bg:#F4F5F7;--surface:#FFFFFF;--surface2:#F0F1F3;
+  --border:rgba(0,0,0,0.08);--text:#1A1C20;--muted:#6B7280;
+  --shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;min-height:100vh}
 
-/* LOADING */
 #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:16px}
-.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin 0.8s linear infinite}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .load-text{color:var(--muted);font-size:13px}
 
-/* HEADER */
-header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
 .logo{font-family:'DM Serif Display',serif;font-size:20px;color:var(--teal);letter-spacing:-0.5px;display:flex;align-items:center;gap:8px}
-.logo-dot{width:10px;height:10px;border-radius:50%;background:var(--orange);display:inline-block}
+.logo-dot{width:10px;height:10px;border-radius:50%;background:var(--orange)}
 .logo span{color:var(--text)}
-.header-right{display:flex;align-items:center;gap:12px}
+.header-right{display:flex;align-items:center;gap:10px}
 .header-meta{color:var(--muted);font-size:12px;text-align:right;line-height:1.5}
 .header-meta strong{color:var(--text)}
-.refresh-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:500;transition:all 0.15s}
+.refresh-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:500;transition:all .15s}
 .refresh-btn:hover{border-color:var(--teal);color:var(--teal)}
 
-/* TABS */
-.tabs{display:flex;gap:0;padding:0 24px;border-bottom:2px solid var(--border);background:var(--surface);overflow-x:auto}
-.tab{padding:12px 18px;cursor:pointer;color:var(--muted);font-weight:500;font-size:13px;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.15s;letter-spacing:0.1px}
+.tabs{display:flex;padding:0 20px;border-bottom:2px solid var(--border);background:var(--surface);overflow-x:auto}
+.tab{padding:12px 16px;cursor:pointer;color:var(--muted);font-weight:500;font-size:13px;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s}
 .tab:hover{color:var(--text)}
 .tab.active{color:var(--teal);border-bottom-color:var(--teal);font-weight:600}
 
-/* PAGES */
-.page{display:none;padding:20px 24px;max-width:1400px}
+.page{display:none;padding:18px 20px;max-width:1400px}
 .page.active{display:block}
 
-/* LAYOUT */
-.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:18px}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
 @media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr}}
 
-/* CARDS */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
-.card-title{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:12px;font-weight:600}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow)}
+.card-title{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
 .chart-wrap{position:relative;height:200px}
-.chart-wrap-lg{position:relative;height:270px}
+.chart-wrap-lg{position:relative;height:260px}
 
-/* KPI */
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow)}
-.kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px;font-weight:600}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 15px;box-shadow:var(--shadow)}
+.kpi-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;font-weight:600}
 .kpi-value{font-family:'DM Serif Display',serif;font-size:28px;line-height:1;color:var(--text)}
 .kpi-sub{font-size:11px;color:var(--muted);margin-top:3px}
 .kpi.accent-teal{border-left:3px solid var(--teal)}
 .kpi.accent-green{border-left:3px solid var(--green)}
 .kpi.accent-orange{border-left:3px solid var(--orange)}
 .kpi.accent-pink{border-left:3px solid var(--pink)}
-.c-teal{color:var(--teal)} .c-green{color:var(--green)} .c-orange{color:var(--orange)} .c-pink{color:var(--pink)} .c-muted{color:var(--muted)}
+.c-teal{color:var(--teal)}.c-green{color:var(--green)}.c-orange{color:var(--orange)}.c-pink{color:var(--pink)}.c-muted{color:var(--muted)}
 
-/* TABLE */
 table{width:100%;border-collapse:collapse}
-th{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);font-weight:600;padding:8px 10px;text-align:left;border-bottom:2px solid var(--border)}
-td{padding:9px 10px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;color:var(--text)}
+th{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:600;padding:7px 9px;text-align:left;border-bottom:2px solid var(--border)}
+td{padding:8px 9px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;color:var(--text)}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--surface2)}
 
-/* BADGES */
-.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;letter-spacing:0.3px;white-space:nowrap}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;letter-spacing:.3px;white-space:nowrap}
 .b-host{background:var(--teal-dim);color:var(--teal)}
 .b-ambassador{background:var(--orange-dim);color:var(--orange)}
 .b-sponsor{background:var(--green-dim);color:#7A8000}
 .b-buzzplus{background:var(--pink-dim);color:var(--pink)}
 .b-regional{background:var(--teal-dim);color:var(--teal)}
 .b-regional-host{background:rgba(0,161,154,0.07);color:#007A75}
-.b-corporate{background:rgba(107,114,128,0.12);color:var(--muted)}
-.b-new{background:var(--green-dim);color:#7A8000}
+.b-corporate{background:rgba(107,114,128,.12);color:var(--muted)}
 .b-lapsed{background:var(--pink-dim);color:var(--pink)}
 .b-candidate{background:var(--orange-dim);color:var(--orange)}
+.b-new{background:var(--green-dim);color:#7A8000}
 
-/* STREAK DOTS */
+/* STREAK DOTS — newest LEFT, oldest RIGHT */
 .streak-bar{display:flex;gap:3px;align-items:center}
 .sdot{width:10px;height:10px;border-radius:2px;background:var(--surface2);border:1px solid var(--border)}
 .sdot.hit{background:var(--teal);border-color:var(--teal)}
-.sdot.hit-recent{background:var(--green);border-color:var(--green)}
+.sdot.hit-old{background:rgba(0,161,154,0.4);border-color:rgba(0,161,154,0.4)}
+.streak-legend{font-size:10px;color:var(--muted);margin-top:4px}
+.streak-legend span{display:inline-flex;align-items:center;gap:3px;margin-right:8px}
 
-/* INPUTS */
-.search-box{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 13px;color:var(--text);font-family:inherit;font-size:13px;margin-bottom:14px;outline:none;box-shadow:var(--shadow)}
+.search-box{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 13px;color:var(--text);font-family:inherit;font-size:13px;margin-bottom:12px;outline:none;box-shadow:var(--shadow)}
 .search-box:focus{border-color:var(--teal)}
-.toggle-group{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
-.tog{padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-family:inherit;font-size:12px;cursor:pointer;font-weight:500;transition:all 0.15s;box-shadow:var(--shadow)}
+.toggle-group{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.tog{padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);font-family:inherit;font-size:12px;cursor:pointer;font-weight:500;transition:all .15s;box-shadow:var(--shadow)}
 .tog.active,.tog:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-light)}
+.tog-label{font-size:11px;color:var(--muted);font-weight:600;margin-right:2px}
 
-/* ALERTS */
-.alert{display:flex;gap:10px;padding:11px 14px;background:var(--surface);border-radius:8px;margin-bottom:8px;border-left:3px solid var(--border);box-shadow:var(--shadow)}
-.alert.teal{border-left-color:var(--teal)}
-.alert.green{border-left-color:var(--green)}
-.alert.orange{border-left-color:var(--orange)}
-.alert.pink{border-left-color:var(--pink)}
+.alert{display:flex;gap:10px;padding:10px 13px;background:var(--surface);border-radius:8px;margin-bottom:8px;border-left:3px solid var(--border);box-shadow:var(--shadow)}
+.alert.teal{border-left-color:var(--teal)}.alert.green{border-left-color:var(--green)}
+.alert.orange{border-left-color:var(--orange)}.alert.pink{border-left-color:var(--pink)}
 .alert-icon{font-size:15px;flex-shrink:0;margin-top:1px}
 .alert-text{font-size:12px;line-height:1.6;color:var(--muted)}
 .alert-text strong{color:var(--text)}
 
 /* PLENTY */
-.plenty-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:8px;margin-bottom:14px}
-.checkpoint{background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:10px 6px;text-align:center;box-shadow:var(--shadow)}
+.plenty-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:7px;margin-bottom:12px}
+.checkpoint{background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 5px;text-align:center;box-shadow:var(--shadow)}
 .checkpoint.current{border-color:var(--teal);background:var(--teal-light)}
-.cp-label{font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:500}
-.cp-value{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text)}
+.checkpoint.prev-month{border-color:var(--orange);opacity:.7}
+.cp-label{font-size:10px;color:var(--muted);margin-bottom:2px;font-weight:500}
+.cp-value{font-family:'DM Serif Display',serif;font-size:19px;color:var(--text)}
 .cp-value.empty{color:var(--border)}
-.projection-box{background:linear-gradient(135deg,var(--teal-light),var(--green-light));border:1.5px solid var(--teal);border-radius:10px;padding:16px;text-align:center;margin-bottom:14px}
+.cp-prev{font-size:10px;color:var(--orange);margin-top:1px}
+.projection-box{background:linear-gradient(135deg,var(--teal-light),var(--green-light));border:1.5px solid var(--teal);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px}
 .proj-label{font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500}
-.proj-value{font-family:'DM Serif Display',serif;font-size:52px;color:var(--teal);line-height:1}
+.proj-value{font-family:'DM Serif Display',serif;font-size:48px;color:var(--teal);line-height:1}
 .proj-range{font-size:11px;color:var(--muted);margin-top:4px}
 .traffic-light{display:inline-block;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;margin-top:8px}
 .tl-green{background:var(--green-dim);color:#7A8000}
 .tl-orange{background:var(--orange-dim);color:var(--orange)}
 .tl-pink{background:var(--pink-dim);color:var(--pink)}
 
-/* PLENTY INPUT */
-.plenty-form{background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:14px}
-.plenty-input-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
-.input-group{display:flex;flex-direction:column;gap:4px}
-.input-group label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;font-weight:600}
-.input-group input{background:var(--surface);border:1.5px solid var(--border);border-radius:7px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:14px;width:84px;outline:none;box-shadow:var(--shadow)}
+.plenty-form{background:var(--surface2);border-radius:10px;padding:13px;margin-bottom:12px}
+.plenty-input-row{display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap}
+.input-group{display:flex;flex-direction:column;gap:3px}
+.input-group label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600}
+.input-group input{background:var(--surface);border:1.5px solid var(--border);border-radius:7px;padding:8px 9px;color:var(--text);font-family:inherit;font-size:14px;width:80px;outline:none;box-shadow:var(--shadow)}
 .input-group input:focus{border-color:var(--teal)}
-.save-btn{background:var(--teal);color:white;border:none;border-radius:7px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:opacity 0.15s;white-space:nowrap}
-.save-btn:hover{opacity:0.85}
+.save-btn{background:var(--teal);color:white;border:none;border-radius:7px;padding:9px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s;white-space:nowrap}
+.save-btn:hover{opacity:.85}
+.sec-btn{background:var(--surface2);color:var(--text);border:1.5px solid var(--border);border-radius:7px;padding:8px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+.sec-btn:hover{border-color:var(--teal);color:var(--teal)}
 .save-note{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5}
 
 /* HEALTH */
-.health-score-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;min-height:200px}
-.health-score{font-family:'DM Serif Display',serif;font-size:80px;line-height:1}
+.health-score-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;min-height:190px}
+.health-score{font-family:'DM Serif Display',serif;font-size:76px;line-height:1}
 .health-sub{font-size:13px;color:var(--muted);margin-top:6px}
-.health-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.health-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
 .health-row:last-child{border:none}
 
-.section-head{font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:14px;color:var(--text)}
-.divider{height:1px;background:var(--border);margin:18px 0}
+.section-head{font-family:'DM Serif Display',serif;font-size:18px;margin-bottom:12px;color:var(--text)}
 .empty{color:var(--muted);font-style:italic;font-size:13px;padding:8px 0}
 
-/* Score band pills */
-.band-thriving{color:var(--teal)}
-.band-healthy{color:var(--green)}
-.band-steady{color:var(--orange)}
-.band-low{color:var(--pink)}
+/* NOTES */
+.note-cell textarea{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:12px;color:var(--text);resize:none;outline:none;min-height:52px;transition:border-color .15s}
+.note-cell textarea:focus{border-color:var(--teal)}
+.note-save{background:var(--teal);color:white;border:none;border-radius:5px;padding:4px 10px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;margin-top:4px;transition:opacity .15s}
+.note-save:hover{opacity:.8}
+.note-saved{color:var(--teal);font-size:11px;margin-top:4px;display:none}
+.ft-actions{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+
+.band-thriving{color:var(--teal)}.band-healthy{color:var(--green)}.band-steady{color:var(--orange)}.band-low{color:var(--pink)}
 </style>
 </head>
 <body>
@@ -195,6 +178,7 @@ tr:hover td{background:var(--surface2)}
   <div class="tab" onclick="showTab('people',this)">👥 People</div>
 </div>
 
+<!-- OVERVIEW -->
 <div class="page active" id="tab-overview">
   <div class="kpi-row" id="kpi-overview"></div>
   <div class="grid-2">
@@ -210,41 +194,57 @@ tr:hover td{background:var(--surface2)}
   </div>
 </div>
 
+<!-- FIRST-TIMERS -->
 <div class="page" id="tab-firsttimers">
   <div class="section-head" id="ft-heading">First-Timers</div>
   <div class="toggle-group" id="ft-month-picker"></div>
-  <div class="card" style="margin-bottom:14px"><div id="ft-list"></div></div>
+  <div class="ft-actions">
+    <button class="sec-btn" onclick="exportFTcsv()">⬇ Export CSV for mail merge</button>
+    <span id="ft-export-note" style="font-size:11px;color:var(--muted)"></span>
+  </div>
+  <div class="card" style="margin-bottom:12px"><div id="ft-list"></div></div>
   <div class="card"><div class="card-title">First-Timers Per Month — Full History</div><div class="chart-wrap-lg"><canvas id="ch-ft"></canvas></div></div>
 </div>
 
+<!-- LOYALTY -->
 <div class="page" id="tab-loyalty">
   <div class="kpi-row" id="kpi-loyalty"></div>
+  <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span class="tog-label">Streak window:</span>
+    <button class="tog active" id="sw-6" onclick="setStreakWindow(6,this)">6 months</button>
+    <button class="tog" id="sw-12" onclick="setStreakWindow(12,this)">12 months</button>
+    <span style="font-size:11px;color:var(--muted);margin-left:8px">Dots: newest ← left &nbsp;·&nbsp; oldest → right</span>
+  </div>
   <div class="grid-2">
-    <div class="card"><div class="card-title">Top 15 Regulars — All Time</div>
-      <table><thead><tr><th>#</th><th>Name</th><th>Role</th><th>Visits</th><th>Last 6</th></tr></thead>
+    <div class="card">
+      <div class="card-title">Top 20 Regulars — All Time</div>
+      <table><thead><tr><th>#</th><th>Name</th><th>Ever</th><th>Last 12m</th><th>Streak</th></tr></thead>
       <tbody id="top-table"></tbody></table>
     </div>
-    <div class="card"><div class="card-title">Hot Streak — 4+ of Last 6 Events</div>
-      <table><thead><tr><th>Name</th><th>Company</th><th>Last 6</th></tr></thead>
+    <div class="card">
+      <div class="card-title" id="streak-card-title">Hot Streak — 4+ of Last 6 Events</div>
+      <table><thead><tr><th>Name</th><th>Company</th><th>Streak</th><th>Best/12m</th></tr></thead>
       <tbody id="streak-table"></tbody></table>
     </div>
   </div>
   <div class="grid-2">
-    <div class="card"><div class="card-title">Lapsed Regulars — 3+ Visits, Absent 3 Months</div>
+    <div class="card"><div class="card-title">Lapsed Regulars — 3+ Visits, Absent 3+ Months</div>
       <table><thead><tr><th>Name</th><th>Email</th><th>Visits</th><th>Last Seen</th></tr></thead>
       <tbody id="lapsed-table"></tbody></table>
     </div>
-    <div class="card"><div class="card-title">Ambassador & Sponsor Candidates — 8+ Visits, No Role</div>
-      <table><thead><tr><th>Name</th><th>Company</th><th>Visits</th><th>Attending Since</th></tr></thead>
+    <div class="card"><div class="card-title">Ambassador & Sponsor Candidates — 8+ Visits, Active Last 12m, No Role</div>
+      <table><thead><tr><th>Name</th><th>Company</th><th>Visits</th><th>Last 12m</th></tr></thead>
       <tbody id="candidate-table"></tbody></table>
     </div>
   </div>
 </div>
 
+<!-- PLENTY -->
 <div class="page" id="tab-plenty">
   <div class="grid-2">
     <div>
       <div class="section-head" id="plenty-title">Next Event — Booking Tracker</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px" id="plenty-subtitle"></div>
       <div class="plenty-grid" id="plenty-checkpoints"></div>
       <div class="projection-box">
         <div class="proj-label">Projected Day-Of Attendance</div>
@@ -256,25 +256,26 @@ tr:hover td{background:var(--surface2)}
         <div class="card-title">Log Today's Numbers</div>
         <div class="plenty-form">
           <div class="plenty-input-row">
-            <div class="input-group"><label>Total (T)</label><input type="number" id="inp-t" placeholder="e.g. 28"></div>
-            <div class="input-group"><label>LinkedIn (L)</label><input type="number" id="inp-l" placeholder="e.g. 42"></div>
-            <div class="input-group"><label>Eventbrite (E)</label><input type="number" id="inp-e" placeholder="e.g. 2"></div>
-            <div class="input-group"><label>Wilson Browne</label><input type="number" id="inp-wb" placeholder="e.g. 2"></div>
-            <div class="input-group"><label>Buzz+</label><input type="number" id="inp-bp" placeholder="e.g. 1"></div>
-            <div class="input-group"><label>Sponsors</label><input type="number" id="inp-sp" placeholder="e.g. 1"></div>
+            <div class="input-group"><label>Total (T)</label><input type="number" id="inp-t" placeholder="28"></div>
+            <div class="input-group"><label>LinkedIn</label><input type="number" id="inp-l" placeholder="42"></div>
+            <div class="input-group"><label>Eventbrite</label><input type="number" id="inp-e" placeholder="2"></div>
+            <div class="input-group"><label>W. Browne</label><input type="number" id="inp-wb" placeholder="2"></div>
+            <div class="input-group"><label>Buzz+</label><input type="number" id="inp-bp" placeholder="1"></div>
+            <div class="input-group"><label>Sponsors</label><input type="number" id="inp-sp" placeholder="1"></div>
           </div>
-          <div style="margin-top:10px">
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
             <button class="save-btn" onclick="savePlentyEntry()">Generate Sheet Row ↗</button>
           </div>
         </div>
-        <div class="save-note">Paste the generated row into your Plenty tab in Google Sheets, then click Refresh to update the dashboard.</div>
+        <div class="save-note">Paste the generated row into your Plenty tab in Google Sheets, then click Refresh.</div>
         <div id="plenty-output" style="display:none;margin-top:10px;padding:10px;background:var(--surface2);border-radius:6px;font-family:monospace;font-size:12px;color:var(--text);word-break:break-all"></div>
       </div>
     </div>
-    <div class="card"><div class="card-title">Historical Booking Curves — Total Booked by Checkpoint</div><div class="chart-wrap-lg"><canvas id="ch-plenty"></canvas></div></div>
+    <div class="card"><div class="card-title">Booking Curves — This Event vs Previous Month</div><div class="chart-wrap-lg"><canvas id="ch-plenty"></canvas></div></div>
   </div>
 </div>
 
+<!-- HEALTH -->
 <div class="page" id="tab-health">
   <div class="grid-3">
     <div class="card">
@@ -282,20 +283,19 @@ tr:hover td{background:var(--surface2)}
       <div class="health-score-wrap">
         <div class="health-score" id="health-score">—</div>
         <div class="health-sub" id="health-label">Calculating...</div>
-        <div style="width:100%;margin-top:16px" id="health-breakdown"></div>
+        <div style="width:100%;margin-top:14px" id="health-breakdown"></div>
       </div>
     </div>
     <div class="card" style="grid-column:span 2"><div class="card-title">Health Score — Rolling History</div><div class="chart-wrap-lg"><canvas id="ch-health"></canvas></div></div>
   </div>
-  <div class="card" style="margin-top:14px">
+  <div class="card" style="margin-top:12px">
     <div class="card-title">How the Score Works</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:13px;line-height:1.6;color:var(--muted)">
-      <div><strong style="color:var(--teal)">Acquisition 35%</strong><br>% of room who are first-timers. Signals marketing reach — are fresh faces finding you?</div>
-      <div><strong style="color:var(--orange)">Retention 40%</strong><br>% of last month's attendees who came back. The truest measure of experience quality.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;font-size:13px;line-height:1.6;color:var(--muted)">
+      <div><strong style="color:var(--teal)">Acquisition 35%</strong><br>% of room who are first-timers. Signals marketing reach.</div>
+      <div><strong style="color:var(--orange)">Retention 40%</strong><br>% of last month's attendees who came back. Truest measure of experience quality.</div>
       <div><strong style="color:var(--green)">Momentum 25%</strong><br>3-month trend vs prior 3 months. Growing, holding, or sliding?</div>
     </div>
-    <div style="margin-top:12px;font-size:11px;color:var(--muted)">
-      Score bands: &nbsp;
+    <div style="margin-top:10px;font-size:11px;color:var(--muted)">
       <span class="band-thriving">■ 80–100 Thriving</span> &nbsp;
       <span class="band-healthy">■ 65–79 Healthy</span> &nbsp;
       <span class="band-steady">■ 50–64 Steady</span> &nbsp;
@@ -304,6 +304,7 @@ tr:hover td{background:var(--surface2)}
   </div>
 </div>
 
+<!-- PEOPLE -->
 <div class="page" id="tab-people">
   <input class="search-box" id="people-search" placeholder="Search name, email, company..." oninput="renderPeople()">
   <div class="toggle-group">
@@ -316,13 +317,14 @@ tr:hover td{background:var(--surface2)}
   </div>
   <div class="card">
     <table>
-      <thead><tr><th>Name</th><th>Role</th><th>Company</th><th>Email</th><th>Visits</th><th>First Seen</th><th>Last Seen</th></tr></thead>
+      <thead><tr><th>Name</th><th>Role</th><th>Company</th><th>Email</th><th>All Time</th><th>Last 12m</th><th>First Seen</th><th>Last Seen</th></tr></thead>
       <tbody id="people-table"></tbody>
     </table>
   </div>
 </div>
 
 <script>
+// ─── CONFIG ────────────────────────────────────────────────────────
 const SHEETS = {
   events:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vTHDeTUv7JOI_S-vHofkBzK8PkHJbS_wQKHR6gU-Dyi1ZUDAGNtZgrBUbixMO24KERCTr-xfYdDCCKB/pub?gid=2001726275&single=true&output=csv',
   attendance: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTHDeTUv7JOI_S-vHofkBzK8PkHJbS_wQKHR6gU-Dyi1ZUDAGNtZgrBUbixMO24KERCTr-xfYdDCCKB/pub?gid=665572416&single=true&output=csv',
@@ -330,77 +332,90 @@ const SHEETS = {
   plenty:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vTHDeTUv7JOI_S-vHofkBzK8PkHJbS_wQKHR6gU-Dyi1ZUDAGNtZgrBUbixMO24KERCTr-xfYdDCCKB/pub?gid=1245784847&single=true&output=csv',
 };
 
+// ─── STATE ─────────────────────────────────────────────────────────
 let DB = { events:[], attendance:[], people:[], plenty:[] };
 let charts = {};
 let peopleFilter = 'all';
 let ftSelectedDate = null;
+let streakWindow = 6;
+// In-memory notes store (keyed by person_id, persists for session)
+let notes = {};
 
+// ─── LOAD ──────────────────────────────────────────────────────────
 function parseCSV(text) {
   const lines = text.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
-  return lines.slice(1).map(line => {
-    const vals = []; let cur = '', inQ = false;
-    for (let c of line) {
-      if (c==='"') inQ=!inQ;
-      else if (c===',' && !inQ){vals.push(cur.trim());cur='';}
+  const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(line=>{
+    const vals=[]; let cur='',inQ=false;
+    for(let c of line){
+      if(c==='"') inQ=!inQ;
+      else if(c===','&&!inQ){vals.push(cur.trim());cur='';}
       else cur+=c;
     }
     vals.push(cur.trim());
-    const obj = {};
+    const obj={};
     headers.forEach((h,i)=>obj[h]=(vals[i]||'').replace(/^"|"$/g,''));
     return obj;
   }).filter(r=>Object.values(r).some(v=>v));
 }
 
-async function fetchSheet(name) {
-  const r = await fetch(SHEETS[name]+'&t='+Date.now());
+async function fetchSheet(name){
+  const r=await fetch(SHEETS[name]+'&t='+Date.now());
   return parseCSV(await r.text());
 }
 
-async function loadAll() {
+async function loadAll(){
   document.getElementById('loading').style.display='flex';
-  try {
-    const [events,attendance,people,plenty] = await Promise.all([
+  try{
+    const[events,attendance,people,plenty]=await Promise.all([
       fetchSheet('events'),fetchSheet('attendance'),fetchSheet('people'),fetchSheet('plenty')
     ]);
     DB={events,attendance,people,plenty};
     destroyCharts();
-    ftSelectedDate = DB.events.length ? DB.events[DB.events.length-1].date : null;
+    // Set ftSelectedDate to most recent event
+    ftSelectedDate=DB.events.length?DB.events[DB.events.length-1].date:null;
     render();
     document.getElementById('loading').style.display='none';
-  } catch(e) {
-    document.getElementById('loading').innerHTML=`<div style="color:var(--pink);text-align:center;padding:20px;font-size:14px">Failed to load from Google Sheets.<br><small style="color:var(--muted);margin-top:4px;display:block">${e.message}</small><br><button class="refresh-btn" style="margin-top:12px" onclick="loadAll()">Try again</button></div>`;
+  }catch(e){
+    document.getElementById('loading').innerHTML=`<div style="color:var(--pink);text-align:center;padding:24px;font-size:14px">
+      Failed to load from Google Sheets.<br><small style="color:var(--muted);margin-top:6px;display:block">${e.message}</small>
+      <br><button class="refresh-btn" style="margin-top:14px" onclick="loadAll()">Try again</button></div>`;
   }
 }
 
-function destroyCharts() {
+function destroyCharts(){
   Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});
   charts={};
 }
 
-function num(v){return parseInt(v)||0;}
+// ─── HELPERS ───────────────────────────────────────────────────────
+const num=v=>parseInt(v)||0;
 
-function roleBadge(role) {
+function roleBadge(role){
   if(!role) return '';
   const map={
-    host:['b-host','Host'],
-    ambassador:['b-ambassador','Ambassador'],
-    sponsor:['b-sponsor','Sponsor'],
-    buzz_plus:['b-buzzplus','Buzz+'],
-    regional_lead:['b-regional','Regional Lead'],
-    former_regional_lead:['b-regional-host','Former Lead'],
-    regional_host:['b-regional-host','Regional Host'],
-    corporate_wilson_browne:['b-corporate','Wilson Browne'],
+    host:['b-host','Host'],ambassador:['b-ambassador','Ambassador'],
+    sponsor:['b-sponsor','Sponsor'],buzz_plus:['b-buzzplus','Buzz+'],
+    regional_lead:['b-regional','Regional Lead'],former_regional_lead:['b-regional-host','Former Lead'],
+    regional_host:['b-regional-host','Regional Host'],corporate_wilson_browne:['b-corporate','Wilson Browne'],
   };
   const r=map[role];
   return r?`<span class="badge ${r[0]}">${r[1]}</span>`:`<span class="badge b-corporate">${role}</span>`;
 }
 
 function isTeam(p){
-  return ['host','ambassador','sponsor','buzz_plus','regional_lead','former_regional_lead','regional_host','corporate_wilson_browne'].includes(p.role);
+  return['host','ambassador','sponsor','buzz_plus','regional_lead','former_regional_lead','regional_host','corporate_wilson_browne'].includes(p.role);
 }
 
-function makeChart(id,type,data,opts={}) {
+function attended(personId,date){
+  return DB.attendance.some(a=>a.person_id===personId&&a.date===date);
+}
+
+function personDates(personId){
+  return DB.attendance.filter(a=>a.person_id===personId).map(a=>a.date).sort();
+}
+
+function makeChart(id,type,data,opts={}){
   const ctx=document.getElementById(id);
   if(!ctx) return;
   if(charts[id]) charts[id].destroy();
@@ -424,7 +439,8 @@ function mergeDeep(a,b){
   return out;
 }
 
-function render() {
+// ─── RENDER ALL ────────────────────────────────────────────────────
+function render(){
   const events=DB.events;
   const latest=events[events.length-1];
   const last6Dates=events.slice(-6).map(e=>e.date);
@@ -435,27 +451,26 @@ function render() {
 
   renderOverview(events,latest,last6Dates,last3Dates);
   renderFirstTimers(events);
-  renderLoyalty(events,last6Dates,last3Dates);
+  renderLoyalty(events);
   renderPlenty(events);
   renderHealth(events);
   renderPeople();
 }
 
-// ── OVERVIEW ──
-function renderOverview(events,latest,last6Dates,last3Dates) {
+// ─── OVERVIEW ──────────────────────────────────────────────────────
+function renderOverview(events,latest,last6Dates,last3Dates){
   const people=DB.people;
   const nonTeam=people.filter(p=>!isTeam(p));
   const regulars=nonTeam.filter(p=>num(p.total_attended)>=5);
   const onceDone=nonTeam.filter(p=>num(p.total_attended)===1);
 
   document.getElementById('kpi-overview').innerHTML=`
-    <div class="kpi accent-teal"><div class="kpi-label">Last Event</div><div class="kpi-value c-teal">${num(latest?.total_booked)}</div><div class="kpi-sub">${latest?.label} booked</div></div>
+    <div class="kpi accent-teal"><div class="kpi-label">Last Event</div><div class="kpi-value c-teal">${num(latest?.total_booked)}</div><div class="kpi-sub">${latest?.label}</div></div>
     <div class="kpi accent-green"><div class="kpi-label">First-Timers</div><div class="kpi-value c-green">${num(latest?.total_new)}</div><div class="kpi-sub">${latest?.total_booked?Math.round(num(latest.total_new)/num(latest.total_booked)*100):0}% of room</div></div>
     <div class="kpi"><div class="kpi-label">Returning</div><div class="kpi-value">${num(latest?.total_returning)}</div><div class="kpi-sub">familiar faces</div></div>
     <div class="kpi"><div class="kpi-label">All-Time Visitors</div><div class="kpi-value">${people.length}</div><div class="kpi-sub">unique people</div></div>
     <div class="kpi accent-orange"><div class="kpi-label">Loyal Core</div><div class="kpi-value c-orange">${regulars.length}</div><div class="kpi-sub">5+ visits</div></div>
-    <div class="kpi accent-pink"><div class="kpi-label">One & Done</div><div class="kpi-value c-pink">${onceDone.length}</div><div class="kpi-sub">${Math.round(onceDone.length/Math.max(nonTeam.length,1)*100)}% of visitors</div></div>
-  `;
+    <div class="kpi accent-pink"><div class="kpi-label">One & Done</div><div class="kpi-value c-pink">${onceDone.length}</div><div class="kpi-sub">${Math.round(onceDone.length/Math.max(nonTeam.length,1)*100)}% of visitors</div></div>`;
 
   makeChart('ch-history','bar',{
     labels:events.map(e=>e.label),
@@ -463,7 +478,9 @@ function renderOverview(events,latest,last6Dates,last3Dates) {
       {label:'Returning',data:events.map(e=>num(e.total_returning)),backgroundColor:'rgba(0,161,154,0.55)',stack:'a'},
       {label:'New',data:events.map(e=>num(e.total_new)),backgroundColor:'rgba(182,189,0,0.75)',stack:'a'},
     ]
-  },{plugins:{legend:{display:true,labels:{color:'#6B7280',font:{size:11}}}},scales:{x:{stacked:true,grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:10},maxTicksLimit:14}},y:{stacked:true,grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:11}}}}});
+  },{plugins:{legend:{display:true,labels:{color:'#6B7280',font:{size:11}}}},
+     scales:{x:{stacked:true,grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:10},maxTicksLimit:14}},
+             y:{stacked:true,grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:11}}}}});
 
   const r12=events.slice(-12);
   makeChart('ch-rolling','line',{
@@ -483,150 +500,241 @@ function renderOverview(events,latest,last6Dates,last3Dates) {
   const alerts=[];
   const ftCount=num(latest?.total_new);
   if(ftCount>0) alerts.push({cls:'teal',icon:'🟢',text:`<strong>${ftCount} first-timers</strong> from ${latest.label} need a follow-up within 48 hours. See the First-Timers tab.`});
-
-  const lapsed=DB.people.filter(p=>!isTeam(p)&&num(p.total_attended)>=3&&!last3Dates.some(d=>DB.attendance.some(a=>a.person_id===p.person_id&&a.date===d)));
-  if(lapsed.length) alerts.push({cls:'orange',icon:'🟡',text:`<strong>${lapsed.length} regulars</strong> haven't been seen in 3+ months. Check the Loyalty tab for the full list.`});
-
+  const lapsed=DB.people.filter(p=>!isTeam(p)&&num(p.total_attended)>=3&&!last3Dates.some(d=>attended(p.person_id,d)));
+  if(lapsed.length) alerts.push({cls:'orange',icon:'🟡',text:`<strong>${lapsed.length} regulars</strong> haven't been seen in 3+ months. Check the Loyalty tab.`});
   const phil=DB.people.find(p=>p.role==='buzz_plus');
   if(phil){
-    const philRecent=last6Dates.filter(d=>DB.attendance.some(a=>a.person_id===phil.person_id&&a.date===d)).length;
+    const philRecent=last6Dates.filter(d=>attended(phil.person_id,d)).length;
     if(philRecent<3) alerts.push({cls:'pink',icon:'🔵',text:`<strong>${phil.name_first} ${phil.name_last}</strong> (Buzz+) has attended ${philRecent}/6 recent events. Worth a touchpoint.`});
   }
-
   const odRate=Math.round(onceDone.length/Math.max(nonTeam.length,1)*100);
-  if(odRate>45) alerts.push({cls:'orange',icon:'⚠️',text:`<strong>${odRate}% of all visitors came once and never returned.</strong> First-timer follow-up is your highest-leverage action as host.`});
+  if(odRate>45) alerts.push({cls:'orange',icon:'⚠️',text:`<strong>${odRate}% of all visitors came once and never returned.</strong> First-timer follow-up is your highest-leverage action.`});
 
   document.getElementById('alerts').innerHTML=alerts.map(a=>`
-    <div class="alert ${a.cls}"><div class="alert-icon">${a.icon}</div><div class="alert-text">${a.text}</div></div>`).join('')||'<div class="empty">No urgent alerts — looking good.</div>';
+    <div class="alert ${a.cls}"><div class="alert-icon">${a.icon}</div><div class="alert-text">${a.text}</div></div>`).join('')
+    ||'<div class="empty">No urgent alerts — looking good.</div>';
 }
 
-// ── FIRST-TIMERS ──
-function renderFirstTimers(events) {
-  // Month picker — last 6 events
+// ─── FIRST-TIMERS ──────────────────────────────────────────────────
+function renderFirstTimers(events){
   const recent=events.slice(-6).reverse();
   document.getElementById('ft-month-picker').innerHTML=recent.map(e=>`
     <button class="tog ${e.date===ftSelectedDate?'active':''}" onclick="selectFTMonth('${e.date}',this)">${e.label}</button>`).join('');
 
-  const selectedEvent=events.find(e=>e.date===ftSelectedDate)||events[events.length-1];
-  document.getElementById('ft-heading').textContent=`First-Timers — ${selectedEvent?.label||''}`;
+  const selEv=events.find(e=>e.date===ftSelectedDate)||events[events.length-1];
+  document.getElementById('ft-heading').textContent=`First-Timers — ${selEv?.label||''}`;
 
-  // Find people whose first appearance is this event
   const ft=DB.people.filter(p=>{
-    const dates=DB.attendance.filter(a=>a.person_id===p.person_id).map(a=>a.date).sort();
-    return dates[0]===ftSelectedDate && !isTeam(p);
+    const dates=personDates(p.person_id);
+    return dates[0]===ftSelectedDate&&!isTeam(p);
   });
 
-  const rows=ft.map(p=>`<tr>
-    <td><strong>${p.name_first} ${p.name_last}</strong></td>
-    <td style="font-size:12px;color:var(--muted)">${p.company||'—'}</td>
-    <td style="font-size:12px">${p.email||'—'}</td>
-    <td style="font-size:12px">${p.mobile||'—'}</td>
-  </tr>`).join('');
+  document.getElementById('ft-export-note').textContent=ft.length?`${ft.length} people ready to export`:'';
+
+  // Table with inline notes
+  const rows=ft.map(p=>{
+    const pid=p.person_id||`${p.name_first}_${p.name_last}`;
+    const saved=notes[pid]||'';
+    return `<tr>
+      <td><strong>${p.name_first} ${p.name_last}</strong></td>
+      <td style="font-size:12px;color:var(--muted)">${p.company||'—'}</td>
+      <td style="font-size:12px">${p.email||'—'}</td>
+      <td style="font-size:12px">${p.mobile||'—'}</td>
+      <td class="note-cell">
+        <textarea id="note-${pid}" placeholder="Add a follow-up note...">${saved}</textarea>
+        <button class="note-save" onclick="saveNote('${pid}')">Save note</button>
+        <div class="note-saved" id="saved-${pid}">✓ Saved</div>
+      </td>
+    </tr>`;
+  }).join('');
 
   document.getElementById('ft-list').innerHTML=`
-    <p style="font-size:13px;color:var(--muted);margin-bottom:12px"><strong style="color:var(--teal)">${ft.length} people</strong> attended for the first time at ${selectedEvent?.label}. These are your priority follow-ups.</p>
-    <table><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Mobile</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="4" class="empty">No data for this month</td></tr>'}</tbody></table>`;
+    <p style="font-size:13px;color:var(--muted);margin-bottom:10px">
+      <strong style="color:var(--teal)">${ft.length} people</strong> attended for the first time at ${selEv?.label}. Notes save locally for this session — export CSV includes them.
+    </p>
+    <table>
+      <thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Mobile</th><th style="width:220px">Follow-up Note</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="5" class="empty">No data for this month</td></tr>'}</tbody>
+    </table>`;
 
   makeChart('ch-ft','bar',{
     labels:events.map(e=>e.label),
-    datasets:[{label:'First-Timers',data:events.map(e=>num(e.total_new)),backgroundColor:events.map(e=>e.date===ftSelectedDate?'#B6BD00':'rgba(182,189,0,0.4)'),borderRadius:3}]
+    datasets:[{label:'First-Timers',data:events.map(e=>num(e.total_new)),
+      backgroundColor:events.map(e=>e.date===ftSelectedDate?'#B6BD00':'rgba(182,189,0,0.4)'),borderRadius:3}]
   },{plugins:{legend:{display:false}}});
 }
 
-function selectFTMonth(date,btn) {
+function selectFTMonth(date,btn){
   ftSelectedDate=date;
   document.querySelectorAll('#ft-month-picker .tog').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderFirstTimers(DB.events);
 }
 
-// ── LOYALTY ──
-function renderLoyalty(events,last6Dates,last3Dates) {
+function saveNote(pid){
+  const ta=document.getElementById('note-'+pid);
+  if(!ta) return;
+  notes[pid]=ta.value;
+  const saved=document.getElementById('saved-'+pid);
+  if(saved){saved.style.display='block';setTimeout(()=>saved.style.display='none',1800);}
+}
+
+function exportFTcsv(){
+  const selEv=DB.events.find(e=>e.date===ftSelectedDate)||DB.events[DB.events.length-1];
+  const ft=DB.people.filter(p=>{
+    const dates=personDates(p.person_id);
+    return dates[0]===ftSelectedDate&&!isTeam(p);
+  });
+  if(!ft.length){alert('No first-timers to export for this month.');return;}
+  const rows=[['First Name','Last Name','Company','Email','Mobile','Note']];
+  ft.forEach(p=>{
+    const pid=p.person_id||`${p.name_first}_${p.name_last}`;
+    rows.push([p.name_first,p.name_last,p.company||'',p.email||'',p.mobile||'',notes[pid]||'']);
+  });
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`first-timers-${selEv?.label?.replace(/\s/g,'-')||ftSelectedDate}.csv`;
+  a.click();
+  document.getElementById('ft-export-note').textContent=`Exported ${ft.length} rows ✓`;
+}
+
+// ─── LOYALTY ───────────────────────────────────────────────────────
+function setStreakWindow(w,btn){
+  streakWindow=w;
+  document.querySelectorAll('#sw-6,#sw-12').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLoyalty(DB.events);
+}
+
+function renderLoyalty(events){
+  const swDates=events.slice(-streakWindow).map(e=>e.date);  // newest first after reverse
+  const last12Dates=events.slice(-12).map(e=>e.date);
+  const last3Dates=events.slice(-3).map(e=>e.date);
+
   const people=DB.people.filter(p=>!isTeam(p));
+
+  // visits in last 12 months
+  const getL12=(p)=>last12Dates.filter(d=>attended(p.person_id,d)).length;
+  // visits in streak window
+  const getSW=(p)=>swDates.filter(d=>attended(p.person_id,d)).length;
+
+  // Longest consecutive streak in last 12 months
+  function longestStreak(p){
+    let max=0,cur=0;
+    [...last12Dates].reverse().forEach(d=>{  // oldest to newest
+      if(attended(p.person_id,d)) cur++;
+      else cur=0;
+      if(cur>max) max=cur;
+    });
+    return max;
+  }
+
+  // Streak dots: newest on left
+  function streakDots(p,windowDates){
+    // windowDates already newest→oldest from events.slice(-N) (events are asc, so reverse)
+    const reversedDates=[...windowDates].reverse(); // now newest first
+    return reversedDates.map((d,i)=>{
+      const hit=attended(p.person_id,d);
+      const isRecent=i<3; // left 3 = most recent
+      return `<div class="sdot ${hit?(isRecent?'hit':'hit-old'):''}"></div>`;
+    }).join('');
+  }
+
   const sorted=[...people].sort((a,b)=>num(b.total_attended)-num(a.total_attended));
 
-  const getL6=(p)=>last6Dates.filter(d=>DB.attendance.some(a=>a.person_id===p.person_id&&a.date===d)).length;
-
-  document.getElementById('top-table').innerHTML=sorted.slice(0,15).map((p,i)=>{
-    const l6=getL6(p);
-    const dots=last6Dates.map(d=>{
-      const hit=DB.attendance.some(a=>a.person_id===p.person_id&&a.date===d);
-      const recent=hit&&last3Dates.includes(d);
-      return `<div class="sdot ${hit?(recent?'hit-recent':'hit'):''}"></div>`;
-    }).join('');
-    return `<tr><td style="color:var(--muted);font-size:12px">${i+1}</td>
+  document.getElementById('top-table').innerHTML=sorted.slice(0,20).map((p,i)=>{
+    const l12=getL12(p);
+    return `<tr>
+      <td style="color:var(--muted);font-size:12px">${i+1}</td>
       <td><strong>${p.name_first} ${p.name_last}</strong></td>
-      <td>${roleBadge(p.role)}</td>
       <td><strong class="c-teal">${p.total_attended}</strong></td>
-      <td><div class="streak-bar">${dots}</div></td></tr>`;
+      <td><strong style="color:${l12>=8?'var(--teal)':l12>=4?'var(--green)':'var(--muted)'}">${l12}</strong></td>
+      <td><div class="streak-bar">${streakDots(p,swDates)}</div></td></tr>`;
   }).join('');
 
-  const streakers=people.filter(p=>getL6(p)>=4).sort((a,b)=>getL6(b)-getL6(a));
+  document.getElementById('streak-card-title').textContent=`Hot Streak — ${Math.ceil(streakWindow*0.67)}+ of Last ${streakWindow} Events`;
+  const threshold=Math.ceil(streakWindow*0.67); // ~67% attendance
+  const streakers=people.filter(p=>getSW(p)>=threshold).sort((a,b)=>getSW(b)-getSW(a));
   document.getElementById('streak-table').innerHTML=streakers.map(p=>{
-    const l6=getL6(p);
-    const dots=last6Dates.map(d=>`<div class="sdot ${DB.attendance.some(a=>a.person_id===p.person_id&&a.date===d)?'hit':''}"></div>`).join('');
-    return `<tr><td><strong>${p.name_first} ${p.name_last}</strong></td>
+    const sw=getSW(p);
+    const best=longestStreak(p);
+    return `<tr>
+      <td><strong>${p.name_first} ${p.name_last}</strong></td>
       <td style="font-size:12px;color:var(--muted)">${p.company||'—'}</td>
-      <td><div class="streak-bar">${dots}<span style="margin-left:6px;color:var(--teal);font-weight:600">${l6}/6</span></div></td></tr>`;
-  }).join('')||'<tr><td colspan="3" class="empty">No streaks yet</td></tr>';
+      <td><div class="streak-bar">${streakDots(p,swDates)}<span style="margin-left:6px;color:var(--teal);font-weight:600">${sw}/${streakWindow}</span></div></td>
+      <td style="font-size:12px;color:var(--muted)">Best: ${best}</td></tr>`;
+  }).join('')||`<tr><td colspan="4" class="empty">No streaks above threshold yet</td></tr>`;
 
-  const lapsed=people.filter(p=>num(p.total_attended)>=3&&!last3Dates.some(d=>DB.attendance.some(a=>a.person_id===p.person_id&&a.date===d)))
+  const lapsed=people.filter(p=>num(p.total_attended)>=3&&!last3Dates.some(d=>attended(p.person_id,d)))
     .sort((a,b)=>num(b.total_attended)-num(a.total_attended)).slice(0,12);
   document.getElementById('lapsed-table').innerHTML=lapsed.map(p=>{
-    const allDates=DB.attendance.filter(a=>a.person_id===p.person_id).map(a=>a.date).sort();
-    const lastDate=allDates[allDates.length-1];
-    const lastLabel=DB.events.find(e=>e.date===lastDate)?.label||lastDate?.slice(0,7)||'—';
-    return `<tr><td><strong>${p.name_first} ${p.name_last}</strong></td>
+    const dates=personDates(p.person_id);
+    const lastLabel=DB.events.find(e=>e.date===dates[dates.length-1])?.label||'—';
+    return `<tr>
+      <td><strong>${p.name_first} ${p.name_last}</strong></td>
       <td style="font-size:12px">${p.email||'—'}</td>
       <td><span class="badge b-lapsed">${p.total_attended}×</span></td>
       <td style="color:var(--muted);font-size:12px">${lastLabel}</td></tr>`;
   }).join('')||'<tr><td colspan="4" class="empty">No lapsed regulars — great sign.</td></tr>';
 
-  const candidates=people.filter(p=>!p.role&&num(p.total_attended)>=8)
+  // Candidates: 8+ visits AND attended at least once in last 12 months
+  const candidates=people.filter(p=>!p.role&&num(p.total_attended)>=8&&getL12(p)>0)
     .sort((a,b)=>num(b.total_attended)-num(a.total_attended)).slice(0,10);
   document.getElementById('candidate-table').innerHTML=candidates.map(p=>{
-    const firstLabel=DB.events.find(e=>e.event_id===p.first_event_id)?.label||'—';
-    return `<tr><td><strong>${p.name_first} ${p.name_last}</strong> <span class="badge b-candidate">Candidate</span></td>
+    const l12=getL12(p);
+    return `<tr>
+      <td><strong>${p.name_first} ${p.name_last}</strong></td>
       <td style="font-size:12px;color:var(--muted)">${p.company||'—'}</td>
       <td><strong class="c-teal">${p.total_attended}</strong></td>
-      <td style="font-size:12px;color:var(--muted)">${firstLabel}</td></tr>`;
-  }).join('')||'<tr><td colspan="4" class="empty">No candidates identified yet</td></tr>';
+      <td><strong style="color:var(--green)">${l12} visits</strong></td></tr>`;
+  }).join('')||'<tr><td colspan="4" class="empty">No active candidates</td></tr>';
 
   const onceDone=people.filter(p=>num(p.total_attended)===1);
   document.getElementById('kpi-loyalty').innerHTML=`
     <div class="kpi accent-teal"><div class="kpi-label">Loyal Core (5+)</div><div class="kpi-value c-teal">${people.filter(p=>num(p.total_attended)>=5).length}</div><div class="kpi-sub">all time</div></div>
-    <div class="kpi accent-green"><div class="kpi-label">Hot Streak (4+/6)</div><div class="kpi-value c-green">${streakers.length}</div><div class="kpi-sub">last 6 events</div></div>
+    <div class="kpi accent-green"><div class="kpi-label">Hot Streak</div><div class="kpi-value c-green">${streakers.length}</div><div class="kpi-sub">last ${streakWindow} events</div></div>
     <div class="kpi accent-orange"><div class="kpi-label">Lapsed Regulars</div><div class="kpi-value c-orange">${lapsed.length}</div><div class="kpi-sub">gone 3+ months</div></div>
-    <div class="kpi accent-pink"><div class="kpi-label">Candidates</div><div class="kpi-value c-pink">${candidates.length}</div><div class="kpi-sub">ambassador/sponsor</div></div>
-    <div class="kpi"><div class="kpi-label">One & Done</div><div class="kpi-value">${onceDone.length}</div><div class="kpi-sub">${Math.round(onceDone.length/Math.max(people.length,1)*100)}%</div></div>
-  `;
+    <div class="kpi accent-pink"><div class="kpi-label">Active Candidates</div><div class="kpi-value c-pink">${candidates.length}</div><div class="kpi-sub">8+ visits, last 12m</div></div>
+    <div class="kpi"><div class="kpi-label">One & Done</div><div class="kpi-value">${onceDone.length}</div><div class="kpi-sub">${Math.round(onceDone.length/Math.max(people.length,1)*100)}%</div></div>`;
 }
 
-// ── PLENTY ──
-function renderPlenty(events) {
+// ─── PLENTY ────────────────────────────────────────────────────────
+function renderPlenty(events){
   const plenty=DB.plenty;
-  const latest=events[events.length-1];
-  document.getElementById('plenty-title').textContent=`${latest?.label||'Next Event'} — Booking Tracker`;
-
   const checkpoints=[
     {key:'D-28',label:'-4 Wks'},{key:'D-21',label:'-3 Wks'},{key:'D-14',label:'-2 Wks'},
     {key:'D-7',label:'-1 Wk'},{key:'D-6',label:'Tue'},{key:'D-5',label:'Wed'},
-    {key:'D-4',label:'Thu'},{key:'D-3',label:'Fri'},{key:'D-2',label:'Sat/Sun'},
-    {key:'D-1',label:'Mon'},{key:'event_day',label:'On Day'},
+    {key:'D-4',label:'Thu'},{key:'D-3',label:'Fri'},{key:'D-2',label:'Wknd'},
+    {key:'D-1',label:'Mon'},{key:'event_day',label:'Day'},
   ];
 
-  const latestPlenty=plenty.filter(p=>p.event_id===latest?.event_id);
-  let lastKnownT=null,lastKnownCp=null;
+  // Identify next/current event:
+  // If the most recent event has PLENTY data marked as event_day, it's done.
+  // Next event = last event entry (host is tracking the upcoming one)
+  // We look for the event that has the most recent PLENTY data
+  const nextEv=events[events.length-1];
+  const prevEv=events[events.length-2];
 
+  document.getElementById('plenty-title').textContent=`${nextEv?.label||'Next Event'} — Booking Tracker`;
+  document.getElementById('plenty-subtitle').textContent=
+    prevEv?`Comparing against ${prevEv.label} booking curve (orange)`:'';
+
+  const nextPlenty=plenty.filter(p=>p.event_id===nextEv?.event_id);
+  const prevPlenty=plenty.filter(p=>p.event_id===prevEv?.event_id);
+
+  let lastKnownT=null,lastKnownCp=null;
   const cpHtml=checkpoints.map((cp,idx)=>{
-    const row=latestPlenty.find(p=>p.checkpoint===cp.key);
+    const row=nextPlenty.find(p=>p.checkpoint===cp.key);
     const t=row?.total_booked?parseInt(row.total_booked):null;
     if(t){lastKnownT=t;lastKnownCp=cp;}
-    const isLast=t&&!checkpoints.slice(idx+1).some(c2=>latestPlenty.find(p=>p.checkpoint===c2.key)?.total_booked);
+    const isLast=t&&!checkpoints.slice(idx+1).some(c2=>nextPlenty.find(p=>p.checkpoint===c2.key)?.total_booked);
+    const prevRow=prevPlenty.find(p=>p.checkpoint===cp.key);
+    const prevT=prevRow?.total_booked?parseInt(prevRow.total_booked):null;
     return `<div class="checkpoint ${isLast?'current':''}">
       <div class="cp-label">${cp.label}</div>
       <div class="cp-value ${t?'':'empty'}">${t||'·'}</div>
+      ${prevT?`<div class="cp-prev">${prevT}</div>`:''}
     </div>`;
   }).join('');
   document.getElementById('plenty-checkpoints').innerHTML=cpHtml;
@@ -642,7 +750,6 @@ function renderPlenty(events) {
       if(cpT&&finalT&&finalT>cpT) ratios.push(finalT/cpT);
     });
   }
-
   if(ratios.length&&lastKnownT){
     ratios.sort((a,b)=>a-b);
     const med=ratios[Math.floor(ratios.length/2)];
@@ -652,68 +759,60 @@ function renderPlenty(events) {
     const projLow=Math.round(lastKnownT*low);
     const projHigh=Math.round(lastKnownT*high);
     document.getElementById('proj-value').textContent=proj;
-    document.getElementById('proj-range').textContent=`Range ${projLow}–${projHigh} · based on ${ratios.length} comparable months`;
+    document.getElementById('proj-range').textContent=`Range ${projLow}–${projHigh} · ${ratios.length} comparable months`;
     const avg6=events.slice(-7,-1).reduce((s,e)=>s+num(e.total_booked),0)/6;
     let tlC='tl-green',tlT='On track 🟢';
     if(proj<avg6*0.8){tlC='tl-pink';tlT='Below average — push marketing 🔴';}
     else if(proj<avg6*0.9){tlC='tl-orange';tlT='Slightly low — keep an eye on it 🟡';}
     document.getElementById('proj-traffic').innerHTML=`<div class="traffic-light ${tlC}">${tlT}</div>`;
-  } else {
+  }else{
     document.getElementById('proj-value').textContent='—';
-    document.getElementById('proj-range').textContent='Add booking numbers above to see projection';
+    document.getElementById('proj-range').textContent='Enter booking numbers to see projection';
     document.getElementById('proj-traffic').innerHTML='';
   }
 
-  // Historical curves
-  const recentEvs=events.slice(-8);
-  const datasets=recentEvs.map((ev,i)=>{
-    const evP=plenty.filter(p=>p.event_id===ev.event_id);
-    const isLatest=ev.event_id===latest?.event_id;
-    return {
-      label:ev.label,
-      data:checkpoints.slice(0,-1).map(cp=>{
-        const row=evP.find(p=>p.checkpoint===cp.key);
-        return row?.total_booked?parseInt(row.total_booked):null;
-      }),
-      borderColor:isLatest?'#00A19A':`rgba(107,114,128,${0.2+(i/recentEvs.length)*0.5})`,
-      borderWidth:isLatest?2.5:1,
-      tension:0.3,spanGaps:true,
-      pointRadius:isLatest?4:2,
-      pointBackgroundColor:isLatest?'#00A19A':'rgba(107,114,128,0.5)',
-    };
+  // Comparison chart: this event vs previous month only
+  const datasets=[];
+  const prevData=checkpoints.slice(0,-1).map(cp=>{
+    const row=prevPlenty.find(p=>p.checkpoint===cp.key);
+    return row?.total_booked?parseInt(row.total_booked):null;
   });
+  const nextData=checkpoints.slice(0,-1).map(cp=>{
+    const row=nextPlenty.find(p=>p.checkpoint===cp.key);
+    return row?.total_booked?parseInt(row.total_booked):null;
+  });
+  if(prevData.some(v=>v)){
+    datasets.push({label:prevEv?.label,data:prevData,borderColor:'#F39200',backgroundColor:'rgba(243,146,0,0.08)',tension:0.3,spanGaps:true,borderDash:[4,3],pointRadius:3,pointBackgroundColor:'#F39200'});
+  }
+  datasets.push({label:nextEv?.label,data:nextData,borderColor:'#00A19A',backgroundColor:'rgba(0,161,154,0.08)',tension:0.3,spanGaps:true,borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#00A19A'});
+
   makeChart('ch-plenty','line',{labels:checkpoints.slice(0,-1).map(c=>c.label),datasets},{
-    plugins:{legend:{display:true,labels:{color:'#6B7280',font:{size:10},boxWidth:12}}}
+    plugins:{legend:{display:true,labels:{color:'#6B7280',font:{size:11},boxWidth:14}}}
   });
 }
 
-// ── PLENTY SAVE ──
-function savePlentyEntry() {
+function savePlentyEntry(){
   const t=document.getElementById('inp-t').value;
+  if(!t){alert('Please enter at least a Total Booked (T) value');return;}
+  const today=new Date();
+  const nextEv=DB.events[DB.events.length-1];
+  const evId=nextEv?.event_id||'EVT???';
+  const dateStr=today.toISOString().split('T')[0];
   const l=document.getElementById('inp-l').value;
   const e=document.getElementById('inp-e').value;
   const wb=document.getElementById('inp-wb').value;
   const bp=document.getElementById('inp-bp').value;
   const sp=document.getElementById('inp-sp').value;
-  if(!t){alert('Please enter at least a Total Booked (T) value');return;}
-  const today=new Date();
-  const latest=DB.events[DB.events.length-1];
-  const evId=latest?.event_id||'EVT???';
-  const dateStr=today.toISOString().split('T')[0];
-  const row=`${evId}\t${dateStr}\tD-today\t0\t${t}\t${l||''}\t${e||''}\t${wb||''}\t`;
   const out=document.getElementById('plenty-output');
   out.style.display='block';
-  out.innerHTML=`<strong>Copy this row into your Plenty tab:</strong><br><br>${evId}, ${dateStr}, D-today, 0, ${t}, ${l||''}, ${e||''}, ${wb||''}, (notes)<br><br><em>Then hit Refresh in the dashboard.</em>`;
-  document.getElementById('inp-t').value='';
-  document.getElementById('inp-l').value='';
-  document.getElementById('inp-e').value='';
-  document.getElementById('inp-wb').value='';
-  document.getElementById('inp-bp').value='';
-  document.getElementById('inp-sp').value='';
+  out.innerHTML=`<strong>Copy this row into your Plenty tab:</strong><br><br>
+<code>${evId}, ${dateStr}, D-log, 0, ${t}, ${l||''}, ${e||''}, ${wb||''}, ${bp||''}, ${sp||''}</code>
+<br><br><em style="color:var(--muted)">Columns: event_id, date, checkpoint, paid, total_booked, linkedin, eventbrite, wilson_browne, buzz_plus, sponsors</em>`;
+  ['inp-t','inp-l','inp-e','inp-wb','inp-bp','inp-sp'].forEach(id=>document.getElementById(id).value='');
 }
 
-// ── HEALTH ──
-function calcHealth(idx) {
+// ─── HEALTH ────────────────────────────────────────────────────────
+function calcHealth(idx){
   const events=DB.events;
   if(idx<1) return null;
   const ev=events[idx],prev=events[idx-1];
@@ -735,7 +834,7 @@ function scoreStyle(s){
   return['var(--pink)','Needs attention'];
 }
 
-function renderHealth(events) {
+function renderHealth(events){
   events=DB.events;
   const latest=calcHealth(events.length-1);
   if(!latest) return;
@@ -744,10 +843,9 @@ function renderHealth(events) {
   document.getElementById('health-score').textContent=latest.total;
   document.getElementById('health-label').textContent=`${label} — ${events[events.length-1].label}`;
   document.getElementById('health-breakdown').innerHTML=`
-    <div class="health-row"><span>Acquisition <span style="color:var(--muted)">(35%)</span></span><span style="color:var(--teal)">${latest.acq}/100 <span style="color:var(--muted)">${Math.round(latest.acqRaw*100)}% new</span></span></div>
-    <div class="health-row"><span>Retention <span style="color:var(--muted)">(40%)</span></span><span style="color:var(--orange)">${latest.ret}/100 <span style="color:var(--muted)">${Math.round(latest.retRaw*100)}% returned</span></span></div>
-    <div class="health-row"><span>Momentum <span style="color:var(--muted)">(25%)</span></span><span style="color:var(--green)">${latest.mom}/100 <span style="color:var(--muted)">${latest.momRaw>=1?'+':''}${Math.round((latest.momRaw-1)*100)}% vs avg</span></span></div>`;
-
+    <div class="health-row"><span>Acquisition (35%)</span><span style="color:var(--teal)">${latest.acq}/100 · ${Math.round(latest.acqRaw*100)}% new</span></div>
+    <div class="health-row"><span>Retention (40%)</span><span style="color:var(--orange)">${latest.ret}/100 · ${Math.round(latest.retRaw*100)}% returned</span></div>
+    <div class="health-row"><span>Momentum (25%)</span><span style="color:var(--green)">${latest.mom}/100 · ${latest.momRaw>=1?'+':''}${Math.round((latest.momRaw-1)*100)}% vs avg</span></div>`;
   const scores=events.map((_,i)=>i===0?null:calcHealth(i)?.total??null);
   makeChart('ch-health','line',{
     labels:events.map(e=>e.label),
@@ -755,10 +853,10 @@ function renderHealth(events) {
   },{scales:{x:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:10},maxTicksLimit:14}},y:{min:0,max:100,grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:11}}}}});
 }
 
-// ── PEOPLE ──
+// ─── PEOPLE ────────────────────────────────────────────────────────
 function setPF(f,btn){
   peopleFilter=f;
-  document.querySelectorAll('.tog').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.toggle-group .tog').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderPeople();
 }
@@ -766,33 +864,36 @@ function setPF(f,btn){
 function renderPeople(){
   const q=(document.getElementById('people-search')?.value||'').toLowerCase();
   const events=DB.events;
+  const last12Dates=events.slice(-12).map(e=>e.date);
   const last3Dates=events.slice(-3).map(e=>e.date);
   let people=[...DB.people];
   if(peopleFilter==='team') people=people.filter(p=>isTeam(p));
   if(peopleFilter==='regular') people=people.filter(p=>!isTeam(p)&&num(p.total_attended)>=5);
   if(peopleFilter==='one') people=people.filter(p=>num(p.total_attended)===1&&!isTeam(p));
-  if(peopleFilter==='recent') people=people.filter(p=>last3Dates.some(d=>DB.attendance.some(a=>a.person_id===p.person_id&&a.date===d)));
-  if(peopleFilter==='candidate') people=people.filter(p=>!p.role&&num(p.total_attended)>=8);
+  if(peopleFilter==='recent') people=people.filter(p=>last3Dates.some(d=>attended(p.person_id,d)));
+  if(peopleFilter==='candidate') people=people.filter(p=>!p.role&&num(p.total_attended)>=8&&last12Dates.some(d=>attended(p.person_id,d)));
   if(q) people=people.filter(p=>`${p.name_first} ${p.name_last} ${p.email} ${p.company}`.toLowerCase().includes(q));
   people.sort((a,b)=>num(b.total_attended)-num(a.total_attended));
 
   document.getElementById('people-table').innerHTML=people.slice(0,200).map(p=>{
-    const allDates=DB.attendance.filter(a=>a.person_id===p.person_id).map(a=>a.date).sort();
-    const firstLabel=DB.events.find(e=>e.date===allDates[0])?.label||'—';
-    const lastLabel=DB.events.find(e=>e.date===allDates[allDates.length-1])?.label||'—';
+    const dates=personDates(p.person_id);
+    const l12=last12Dates.filter(d=>attended(p.person_id,d)).length;
+    const firstLabel=DB.events.find(e=>e.date===dates[0])?.label||'—';
+    const lastLabel=DB.events.find(e=>e.date===dates[dates.length-1])?.label||'—';
     return `<tr>
       <td><strong>${p.name_first} ${p.name_last}</strong></td>
       <td>${roleBadge(p.role)}</td>
       <td style="font-size:12px;color:var(--muted)">${p.company||'—'}</td>
       <td style="font-size:12px">${p.email||'—'}</td>
       <td><strong class="c-teal">${p.total_attended}</strong></td>
+      <td style="color:${l12>=8?'var(--teal)':l12>=4?'var(--green)':'var(--muted)'};font-weight:${l12>=4?'600':'400'}">${l12}</td>
       <td style="font-size:12px;color:var(--muted)">${firstLabel}</td>
       <td style="font-size:12px;color:var(--muted)">${lastLabel}</td>
     </tr>`;
-  }).join('')||'<tr><td colspan="7" class="empty">No results</td></tr>';
+  }).join('')||'<tr><td colspan="8" class="empty">No results</td></tr>';
 }
 
-// ── TABS ──
+// ─── TABS ──────────────────────────────────────────────────────────
 function showTab(name,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
