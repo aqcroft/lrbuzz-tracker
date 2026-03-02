@@ -259,20 +259,13 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
 <div class="page" id="tab-eventday">
   <div class="section-head" id="ed-heading">Event Day</div>
 
-  <!-- Log actual attendance -->
+  <!-- Attendance pulled from 321 Tracker -->
   <div class="card" style="margin-bottom:14px">
-    <div class="card-title">Log Actual Attendance</div>
-    <div class="plenty-form">
-      <div class="plenty-input-row">
-        <div class="input-group"><label>Event</label><input class="wide" type="text" id="ed-event-id" readonly></div>
-        <div class="input-group"><label>In the Room</label><input type="number" id="ed-actual" placeholder="e.g. 43" style="width:100px"></div>
-      </div>
-      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="save-btn orange" onclick="logActualAttendance()">Generate Sheet Row ↗</button>
-      </div>
+    <div class="card-title" style="display:flex;justify-content:space-between">
+      <span>Attendance — from 321 Tracker</span>
+      <span id="ed-event-id" style="color:var(--muted);font-weight:400;font-size:12px"></span>
     </div>
-    <div class="save-note">Paste the generated row into your Events tab in Google Sheets (actual_attended column), then click Refresh.</div>
-    <div class="output-box" id="ed-output"></div>
+    <div id="ed-tracker-summary"><div class="empty">Attendance figures pulled from 321 Tracker submission. Submit the buzzer tool after the event to populate.</div></div>
   </div>
 
   <!-- Summary KPIs (populated after data loads) -->
@@ -310,6 +303,23 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
     <span id="ft-export-note" style="font-size:11px;color:var(--muted)"></span>
   </div>
   <div class="card" style="margin-bottom:12px"><div id="ft-list"></div></div>
+
+  <!-- Did Not Return section -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <span>First-Timers Who Didn't Return</span>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-size:11px;color:var(--muted)">Within:</span>
+        <button class="tog" id="dnr-1" onclick="setDnrWindow(1,this)">1 month</button>
+        <button class="tog active" id="dnr-3" onclick="setDnrWindow(3,this)">3 months</button>
+        <button class="tog" id="dnr-6" onclick="setDnrWindow(6,this)">6 months</button>
+        <button class="tog" id="dnr-12" onclick="setDnrWindow(12,this)">12 months</button>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px" id="dnr-subtitle"></div>
+    <div id="dnr-list"></div>
+  </div>
+
   <div class="card"><div class="card-title">First-Timers Per Month — Full History</div><div class="chart-wrap-lg"><canvas id="ch-ft"></canvas></div></div>
 </div>
 
@@ -362,20 +372,51 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
       <div class="card">
         <div class="card-title">Log Today's Numbers</div>
         <div class="plenty-form">
+          <!-- CSV snapshot upload -->
+          <div style="margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:8px">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:6px">📎 Upload Buzz CSV to auto-fill totals</div>
+            <input type="file" id="plenty-csv-upload" accept=".csv" onchange="parsePlentyCsv(this)" style="font-size:12px">
+            <div id="plenty-csv-status" style="font-size:11px;color:var(--teal);margin-top:4px"></div>
+          </div>
+          <!-- Checkpoint selector -->
+          <div class="plenty-input-row" style="margin-bottom:10px">
+            <div class="input-group" style="flex:1">
+              <label>Checkpoint</label>
+              <select id="inp-checkpoint" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text)">
+                <option value="">Auto-detect</option>
+                <option value="4 weeks out">4 weeks out</option>
+                <option value="3 weeks out">3 weeks out</option>
+                <option value="2 weeks out">2 weeks out</option>
+                <option value="1 week out">1 week out</option>
+                <option value="D-6">D-6</option>
+                <option value="D-5">D-5</option>
+                <option value="D-4">D-4</option>
+                <option value="D-3">D-3</option>
+                <option value="D-2">D-2</option>
+                <option value="D-1">D-1</option>
+                <option value="Evening before">Evening before</option>
+                <option value="Morning of">Morning of</option>
+              </select>
+            </div>
+            <div class="input-group"><label>Auto-detected</label><div id="checkpoint-auto" style="font-size:13px;color:var(--teal);padding:6px 0;font-weight:600">—</div></div>
+          </div>
+          <!-- Totals (auto from CSV, shown readonly) -->
           <div class="plenty-input-row">
-            <div class="input-group"><label>Total (T)</label><input type="number" id="inp-t" placeholder="28"></div>
+            <div class="input-group"><label>Total Booked</label><input type="number" id="inp-t" placeholder="from CSV"></div>
+            <div class="input-group"><label>New</label><input type="number" id="inp-new" placeholder="from CSV"></div>
+            <div class="input-group"><label>Returning</label><input type="number" id="inp-ret" placeholder="auto"></div>
+          </div>
+          <!-- Manual entries -->
+          <div class="plenty-input-row" style="margin-top:8px">
             <div class="input-group"><label>LinkedIn</label><input type="number" id="inp-l" placeholder="42"></div>
             <div class="input-group"><label>Eventbrite</label><input type="number" id="inp-e" placeholder="2"></div>
-            <div class="input-group"><label>W. Browne</label><input type="number" id="inp-wb" placeholder="2"></div>
-            <div class="input-group"><label>Buzz+</label><input type="number" id="inp-bp" placeholder="1"></div>
-            <div class="input-group"><label>Sponsors</label><input type="number" id="inp-sp" placeholder="1"></div>
+            <div class="input-group"><label>Paid</label><input type="number" id="inp-paid" placeholder="0"></div>
           </div>
-          <div style="margin-top:10px">
-            <button class="save-btn" onclick="savePlentyEntry()">Generate Sheet Row ↗</button>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+            <button class="save-btn" onclick="savePlentyEntry()">Save to Sheet ↗</button>
+            <div id="plenty-save-status" style="font-size:12px;display:none"></div>
           </div>
         </div>
-        <div class="save-note">Paste the generated row into your Plenty tab in Google Sheets, then click Refresh.</div>
-        <div class="output-box" id="plenty-output"></div>
       </div>
     </div>
     <div class="card"><div class="card-title">Booking Curves — This Event vs Previous Month</div><div class="chart-wrap-lg"><canvas id="ch-plenty"></canvas></div></div>
@@ -466,6 +507,7 @@ let streakWindow=6;
 let notes={};
 let noShows=new Set();
 let edEventDate=null;
+let dnrWindow=3;
 let overviewIdx=-1;
 
 // ─── LOAD ──────────────────────────────────────────────────────────
@@ -708,6 +750,9 @@ function renderEventDay(events){
   if(!latest){document.getElementById('ed-heading').textContent='Event Day — no data';return;}
   document.getElementById('ed-heading').textContent=`Event Day — ${latest.label}`;
 
+  // Populate tracker summary card
+  renderEdTrackerSummary(events);
+
   // Include EVERYONE booked including team members
   const booked=DB.people.filter(p=>attended(p.person_id,latest.date));
   const newPeople=booked.filter(p=>{const dates=personDates(p.person_id);return dates[0]===latest.date;});
@@ -808,6 +853,7 @@ async function saveNsNote(pid,eventDate){
   try{
     const r=await fetch(SCRIPT_URL,{
       method:'POST',
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({type:'note',key:SCRIPT_KEY,person_id:pid,event_date:eventDate,note:ta.value})
     });
     const d=await r.json();
@@ -821,17 +867,26 @@ async function saveNsNote(pid,eventDate){
   }
 }
 
-function logActualAttendance(){
-  const actual=document.getElementById('ed-actual').value;
-  if(!actual){alert('Please enter the number of people actually in the room.');return;}
-  const latest=DB.events[DB.events.length-1];
-  const evId=latest?.event_id||'EVT???';
-  const out=document.getElementById('ed-output');
-  out.style.display='block';
-  out.innerHTML=`<strong>Update this row in your Events tab:</strong><br><br>
-Find event <code>${evId}</code> (${latest?.label}) and set <code>actual_attended = ${actual}</code><br><br>
-<em style="color:var(--muted)">Or add an actual_attended column if it doesn't exist yet.</em>`;
-  document.getElementById('ed-actual').value='';
+function renderEdTrackerSummary(events){
+  const latest=events[events.length-1];
+  const el=document.getElementById('ed-tracker-summary');
+  const label=document.getElementById('ed-event-id');
+  if(!latest){if(el) el.innerHTML='<div class="empty">No events loaded.</div>';return;}
+  if(label) label.textContent=latest.label||'';
+  const row=DB.tracker.find(r=>String(r.date||'').trim()===String(latest.date||'').trim()
+    && String(r.venue||'').toLowerCase().includes('harborough'));
+  if(!row||!el){
+    if(el) el.innerHTML='<div class="empty" style="font-size:12px">No buzzer submission found for '+latest.label+'. In-room figures will appear here after the 321 Tracker is submitted.</div>';
+    return;
+  }
+  const inRoom=row.in_room||'—';
+  const hostTeam=row.hosting_team||'—';
+  el.innerHTML=`<div style="display:flex;gap:16px;flex-wrap:wrap">
+    <div class="ed-kpi"><div class="ed-kpi-val c-teal">${inRoom}</div><div class="ed-kpi-label">In the Room</div></div>
+    <div class="ed-kpi"><div class="ed-kpi-val">${hostTeam}</div><div class="ed-kpi-label">Hosting Team</div></div>
+    <div class="ed-kpi"><div class="ed-kpi-val c-green">${row.total_buzzers||'—'}</div><div class="ed-kpi-label">Total Buzzers</div></div>
+    <div class="ed-kpi"><div class="ed-kpi-val">${inRoom&&row.total_buzzers&&inRoom!=='—'?Math.round(row.total_buzzers/inRoom*100)+'%':'—'}</div><div class="ed-kpi-label">Buzzer Engagement</div></div>
+  </div>`;
 }
 
 // ─── FIRST-TIMERS ──────────────────────────────────────────────────
@@ -877,6 +932,8 @@ function renderFirstTimers(events){
     datasets:[{label:'First-Timers',data:events.map(e=>num(e.total_new)),
       backgroundColor:events.map(e=>e.date===ftSelectedDate?'#B6BD00':'rgba(182,189,0,0.4)'),borderRadius:3}]
   },{plugins:{legend:{display:false}}});
+
+  renderDnr(events);
 }
 
 function selectFTMonth(date,btn){
@@ -894,6 +951,7 @@ async function saveNote(pid){
   try{
     const r=await fetch(SCRIPT_URL,{
       method:'POST',
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({type:'note',key:SCRIPT_KEY,person_id:pid,event_date:ftSelectedDate,note:ta.value})
     });
     const d=await r.json();
@@ -1087,21 +1145,158 @@ function renderPlenty(events){
   });
 }
 
-function savePlentyEntry(){
+// ─── PLENTY HELPERS ────────────────────────────────────────────────
+function autoCheckpoint(){
+  const events=DB.events;
+  const nextEv=events[events.length-1];
+  if(!nextEv) return 'D-log';
+  // Find next first Tuesday after today
+  const today=new Date();
+  const evDate=new Date(nextEv.date);
+  // Days to event
+  const diff=Math.round((evDate-today)/(1000*60*60*24));
+  if(diff<=0) return 'Morning of';
+  if(diff===1) return 'D-1';
+  if(diff===2) return 'D-2';
+  if(diff===3) return 'D-3';
+  if(diff===4) return 'D-4';
+  if(diff===5) return 'D-5';
+  if(diff===6) return 'D-6';
+  if(diff<=10) return '1 week out';
+  if(diff<=17) return '2 weeks out';
+  if(diff<=24) return '3 weeks out';
+  return '4 weeks out';
+}
+
+function parsePlentyCsv(input){
+  const file=input.files[0];
+  if(!file) return;
+  const status=document.getElementById('plenty-csv-status');
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const lines=e.target.result.split('\n');
+      const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim().toLowerCase());
+      const rows=lines.slice(1).filter(l=>l.trim()).map(l=>{
+        const cols=l.split(',').map(c=>c.replace(/"/g,'').trim());
+        const obj={};
+        headers.forEach((h,i)=>obj[h]=cols[i]||'');
+        return obj;
+      });
+      // Count total, new (first attendance = no prior record)
+      const total=rows.length;
+      // "new" = first time we see this email/name
+      const emails=rows.map(r=>r.email||r['email address']||'').filter(Boolean);
+      const knownEmails=new Set(DB.people.map(p=>(p.email||'').toLowerCase()));
+      let newCount=0;
+      emails.forEach(em=>{if(em&&!knownEmails.has(em.toLowerCase()))newCount++;});
+      const returning=total-newCount;
+      document.getElementById('inp-t').value=total;
+      document.getElementById('inp-new').value=newCount;
+      document.getElementById('inp-ret').value=returning;
+      status.textContent=`✓ ${total} bookings loaded — ${newCount} new, ${returning} returning`;
+      // Auto-detect checkpoint
+      const cp=autoCheckpoint();
+      document.getElementById('checkpoint-auto').textContent=cp;
+    }catch(err){
+      status.textContent='⚠ Could not parse CSV — check format';
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function savePlentyEntry(){
   const t=document.getElementById('inp-t').value;
-  if(!t){alert('Please enter at least a Total Booked (T) value');return;}
+  if(!t){alert('Please enter a Total Booked value or upload a CSV first.');return;}
+  const statusEl=document.getElementById('plenty-save-status');
   const today=new Date();
   const nextEv=DB.events[DB.events.length-1];
   const evId=nextEv?.event_id||'EVT???';
   const dateStr=today.toISOString().split('T')[0];
-  const[l,e,wb,bp,sp]=['inp-l','inp-e','inp-wb','inp-bp','inp-sp'].map(id=>document.getElementById(id).value);
-  const out=document.getElementById('plenty-output');
-  out.style.display='block';
-  out.innerHTML=`<strong>Copy this row into your Plenty tab:</strong><br><br>
-<code>${evId}, ${dateStr}, D-log, 0, ${t}, ${l||''}, ${e||''}, ${wb||''}, ${bp||''}, ${sp||''}</code>
-<br><br><em style="color:var(--muted)">event_id · date · checkpoint · paid · total_booked · linkedin · eventbrite · wilson_browne · buzz_plus · sponsors</em>`;
-  ['inp-t','inp-l','inp-e','inp-wb','inp-bp','inp-sp'].forEach(id=>document.getElementById(id).value='');
+  const timeStr=today.toISOString();
+
+  // Checkpoint: use dropdown if set, else auto
+  let checkpoint=document.getElementById('inp-checkpoint').value;
+  if(!checkpoint) checkpoint=document.getElementById('checkpoint-auto').textContent||autoCheckpoint();
+
+  const l=document.getElementById('inp-l').value||0;
+  const e=document.getElementById('inp-e').value||0;
+  const paid=document.getElementById('inp-paid').value||0;
+  const newCount=document.getElementById('inp-new').value||0;
+  const ret=document.getElementById('inp-ret').value||0;
+
+  statusEl.textContent='Saving…';statusEl.style.color='var(--muted)';statusEl.style.display='block';
+  try{
+    const r=await fetch(SCRIPT_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        type:'plenty',key:SCRIPT_KEY,
+        event_id:evId,date:dateStr,checkpoint,
+        paid,total_booked:t,linkedin:l,eventbrite:e,
+        new_bookings:newCount,returning:ret,logged_at:timeStr
+      })
+    });
+    const d=await r.json();
+    if(d.result==='success'){
+      statusEl.textContent='✓ Saved to sheet';statusEl.style.color='var(--teal)';
+      ['inp-t','inp-l','inp-e','inp-paid','inp-new','inp-ret'].forEach(id=>document.getElementById(id).value='');
+      document.getElementById('inp-checkpoint').value='';
+      document.getElementById('checkpoint-auto').textContent='—';
+      document.getElementById('plenty-csv-status').textContent='';
+      setTimeout(()=>{statusEl.style.display='none';loadAll();},1500);
+    } else {
+      statusEl.textContent='⚠ '+d.message;statusEl.style.color='var(--pink)';
+    }
+  }catch(err){
+    statusEl.textContent='⚠ Network error';statusEl.style.color='var(--pink)';
+  }
 }
+
+// ─── DID NOT RETURN ────────────────────────────────────────────────
+function setDnrWindow(months,btn){
+  dnrWindow=months;
+  document.querySelectorAll('#dnr-1,#dnr-3,#dnr-6,#dnr-12').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDnr(DB.events);
+}
+
+function renderDnr(events){
+  const el=document.getElementById('dnr-list');
+  const sub=document.getElementById('dnr-subtitle');
+  if(!el) return;
+  // Find all first-timers who debuted more than dnrWindow months ago
+  // and have never returned
+  const cutoff=new Date();
+  cutoff.setMonth(cutoff.getMonth()-dnrWindow);
+  const cutoffStr=cutoff.toISOString().split('T')[0];
+
+  const dnr=DB.people.filter(p=>{
+    if(isTeam(p)) return false;
+    const dates=personDates(p.person_id);
+    if(!dates.length) return false;
+    const debut=dates[0];
+    // Only include if debut was more than dnrWindow months ago
+    if(debut>=cutoffStr) return false;
+    // Only include if they have exactly 1 visit (never returned)
+    return dates.length===1;
+  });
+
+  if(sub) sub.textContent=`${dnr.length} people attended once and didn't return within ${dnrWindow} month${dnrWindow>1?'s':''} — potential outreach list`;
+
+  if(!dnr.length){el.innerHTML='<div class="empty">No one in this category — great retention! 🎉</div>';return;}
+
+  const rows=dnr.map(p=>`<tr>
+    <td><strong>${p.name_first} ${p.name_last}</strong></td>
+    <td style="font-size:12px;color:var(--muted)">${p.company||'—'}</td>
+    <td style="font-size:12px">${p.email||'—'}</td>
+    <td style="font-size:12px">${personDates(p.person_id)[0]||'—'}</td>
+  </tr>`).join('');
+
+  el.innerHTML=`<table><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>First Seen</th></tr></thead>
+  <tbody>${rows}</tbody></table>`;
+}
+
 
 // ─── HEALTH ────────────────────────────────────────────────────────
 function calcHealth(idx){
