@@ -306,14 +306,21 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
 
   <!-- Did Not Return section -->
   <div class="card" style="margin-bottom:12px">
-    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-      <span>First-Timers Who Didn't Return</span>
-      <div style="display:flex;gap:6px;align-items:center">
-        <span style="font-size:11px;color:var(--muted)">Within:</span>
-        <button class="tog" id="dnr-1" onclick="setDnrWindow(1,this)">1 month</button>
-        <button class="tog active" id="dnr-3" onclick="setDnrWindow(3,this)">3 months</button>
-        <button class="tog" id="dnr-6" onclick="setDnrWindow(6,this)">6 months</button>
-        <button class="tog" id="dnr-12" onclick="setDnrWindow(12,this)">12 months</button>
+    <div class="card-title">First-Timers Who Didn't Return</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:12px">
+      <div style="display:flex;gap:5px;align-items:center">
+        <span style="color:var(--muted)">Debuted within:</span>
+        <button class="tog" id="cohort-3" onclick="setDnrCohort(3,this)">3 months</button>
+        <button class="tog active" id="cohort-6" onclick="setDnrCohort(6,this)">6 months</button>
+        <button class="tog" id="cohort-12" onclick="setDnrCohort(12,this)">12 months</button>
+        <button class="tog" id="cohort-0" onclick="setDnrCohort(0,this)">All time</button>
+      </div>
+      <div style="display:flex;gap:5px;align-items:center">
+        <span style="color:var(--muted)">Didn't return within:</span>
+        <button class="tog" id="dnr-1" onclick="setDnrWindow(1,this)">1m</button>
+        <button class="tog active" id="dnr-3" onclick="setDnrWindow(3,this)">3m</button>
+        <button class="tog" id="dnr-6" onclick="setDnrWindow(6,this)">6m</button>
+        <button class="tog" id="dnr-12" onclick="setDnrWindow(12,this)">12m</button>
       </div>
     </div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:10px" id="dnr-subtitle"></div>
@@ -502,13 +509,13 @@ const SHEET_NAMES = { events:'Events', attendance:'Attendance', people:'People',
 let DB={events:[],attendance:[],people:[],plenty:[],tracker:[]};
 let charts={};
 let peopleFilter='all';
-let ftSelectedDate=null;
 let streakWindow=6;
 let notes={};
 let noShows=new Set();
-let edEventDate=null;
 let dnrWindow=3;
-let overviewIdx=-1;
+let dnrCohort=6;
+let bn2b=new Set();    // person_ids flagged as BN2B this session
+let selectedIdx=-1;    // global event selector — drives ALL tabs
 
 // ─── LOAD ──────────────────────────────────────────────────────────
 async function fetchSheet(name){
@@ -527,8 +534,7 @@ async function loadAll(){
     ]);
     DB={events,attendance,people,plenty,tracker};
     destroyCharts();
-    ftSelectedDate=DB.events.length?DB.events[DB.events.length-1].date:null;
-    edEventDate=ftSelectedDate;
+    selectedIdx=DB.events.length-1;
     render();
     document.getElementById('loading').style.display='none';
   }catch(e){
@@ -593,15 +599,16 @@ function mergeDeep(a,b){
 // ─── RENDER ALL ────────────────────────────────────────────────────
 function render(){
   const events=DB.events;
-  const latest=events[events.length-1];
-  const last3Dates=events.slice(-3).map(e=>e.date);
-
+  if(selectedIdx===-1) selectedIdx=events.length-1;
+  const ev=events[selectedIdx];
   document.getElementById('header-meta').innerHTML=
-    `Last event: <strong>${latest?.label||'—'}</strong> &nbsp;·&nbsp; ${num(latest?.total_booked)} booked &nbsp;·&nbsp; <strong style="color:var(--teal)">${num(latest?.total_new)} first-timers</strong>`;
+    `Viewing: <strong>${ev?.label||'—'}</strong> &nbsp;·&nbsp; ${num(ev?.total_booked)} booked &nbsp;·&nbsp; <strong style="color:var(--teal)">${num(ev?.total_new)} first-timers</strong>`;
+  renderAll();
+}
 
-  if(latest) document.getElementById('ed-event-id').value=latest.event_id||latest.label||'';
-
-  overviewIdx=events.length-1;
+function renderAll(){
+  const events=DB.events;
+  destroyCharts();
   renderOverview(events);
   renderEventDay(events);
   renderFirstTimers(events);
@@ -611,18 +618,23 @@ function render(){
   renderPeople();
 }
 
-// ─── OVERVIEW ──────────────────────────────────────────────────────
-function stepOverview(dir){
-  const events=DB.events;
-  const maxIdx=events.length-1;
-  overviewIdx=Math.max(0,Math.min(maxIdx,overviewIdx+dir));
-  destroyCharts();
-  renderOverview(events);
+function stepEvent(dir){
+  const max=DB.events.length-1;
+  if(selectedIdx===-1) selectedIdx=max;
+  selectedIdx=Math.max(0,Math.min(max,selectedIdx+dir));
+  // Update header
+  const ev=DB.events[selectedIdx];
+  document.getElementById('header-meta').innerHTML=
+    `Viewing: <strong>${ev?.label||'—'}</strong> &nbsp;·&nbsp; ${num(ev?.total_booked)} booked &nbsp;·&nbsp; <strong style="color:var(--teal)">${num(ev?.total_new)} first-timers</strong>`;
+  renderAll();
 }
+
+// ─── OVERVIEW ──────────────────────────────────────────────────────
+function stepOverview(dir){ stepEvent(dir); }
 
 function renderOverview(events){
   const maxIdx=events.length-1;
-  const ev=events[overviewIdx];
+  const ev=events[selectedIdx]||events[events.length-1];
   const last3Dates=events.slice(-3).map(e=>e.date);
   const last6Dates=events.slice(-6).map(e=>e.date);
   const people=DB.people;
@@ -633,8 +645,8 @@ function renderOverview(events){
 
   document.getElementById('overview-month-label').textContent=ev?.label||'—';
   const nextBtn=document.getElementById('overview-next-btn');
-  nextBtn.disabled=(overviewIdx>=maxIdx);
-  nextBtn.style.opacity=(overviewIdx>=maxIdx)?'0.4':'1';
+  nextBtn.disabled=(selectedIdx>=maxIdx);
+  nextBtn.style.opacity=(selectedIdx>=maxIdx)?'0.4':'1';
 
   document.getElementById('kpi-overview').innerHTML=`
     <div class="kpi accent-teal"><div class="kpi-label">Booked</div><div class="kpi-value c-teal">${num(ev?.total_booked)}</div><div class="kpi-sub">${ev?.label}</div></div>
@@ -650,8 +662,8 @@ function renderOverview(events){
   makeChart('ch-history','bar',{
     labels:events.map(e=>e.label),
     datasets:[
-      {label:'Returning',data:events.map(e=>num(e.total_returning)),backgroundColor:events.map(e=>e.date===ev?.date?'rgba(0,161,154,0.95)':'rgba(0,161,154,0.45)'),stack:'a'},
-      {label:'New',data:events.map(e=>num(e.total_new)),backgroundColor:events.map(e=>e.date===ev?.date?'rgba(182,189,0,0.95)':'rgba(182,189,0,0.55)'),stack:'a'},
+      {label:'Returning',data:events.map(e=>num(e.total_returning)),backgroundColor:events.map((e,i)=>i===selectedIdx?'rgba(0,161,154,0.95)':'rgba(0,161,154,0.45)'),stack:'a'},
+      {label:'New',data:events.map(e=>num(e.total_new)),backgroundColor:events.map((e,i)=>i===selectedIdx?'rgba(182,189,0,0.95)':'rgba(182,189,0,0.55)'),stack:'a'},
     ]
   },{plugins:{legend:{display:true,labels:{color:'#6B7280',font:{size:11}}}},
      scales:{x:{stacked:true,grid:{color:'rgba(0,0,0,0.05)'},ticks:{color:'#6B7280',font:{size:10},maxTicksLimit:14}},
@@ -746,7 +758,7 @@ function render321TrackerData(ev){
 
 // ─── EVENT DAY ─────────────────────────────────────────────────────
 function renderEventDay(events){
-  const latest=events[events.length-1];
+  const latest=events[selectedIdx]||events[events.length-1];
   if(!latest){document.getElementById('ed-heading').textContent='Event Day — no data';return;}
   document.getElementById('ed-heading').textContent=`Event Day — ${latest.label}`;
 
@@ -795,7 +807,10 @@ function renderEdList(type,people,eventDate){
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px">${p.company||'—'}${type==='all'?` · ${visits} visit${visits!==1?'s':''}`:''}${p.email?` · ${p.email}`:''}</div>
       </div>
-      ${type==='all'?`<button class="noshow-toggle ${isNS?'marked':''}" onclick="toggleNoShow('${pid}')">${isNS?'Undo':'No-show'}</button>`:''}
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+        ${type==='all'?`<button class="noshow-toggle ${isNS?'marked':''}" onclick="toggleNoShow('${pid}')">${isNS?'Undo':'No-show'}</button>`:''}
+        ${isNew?`<button class="noshow-toggle ${bn2b.has(pid)?'marked':''}" style="background:${bn2b.has(pid)?'var(--pink)':'transparent'};border-color:var(--pink);color:${bn2b.has(pid)?'#fff':'var(--pink)'};font-size:10px;padding:2px 6px" onclick="toggleBn2b('${pid}',event)">${bn2b.has(pid)?'BN2B ✓':'BN2B?'}</button>`:''}
+      </div>
     </div>`;
   }).join('');
   const el=document.getElementById(`ed-list-${type}`);
@@ -804,14 +819,14 @@ function renderEdList(type,people,eventDate){
 
 function filterEdList(type){
   const events=DB.events;
-  const latest=events[events.length-1];
-  if(!latest) return;
-  const booked=DB.people.filter(p=>attended(p.person_id,latest.date));
+  const ev=events[selectedIdx]||events[events.length-1];
+  if(!ev) return;
+  const booked=DB.people.filter(p=>attended(p.person_id,ev.date));
   const alpha=(a,b)=>`${a.name_first}${a.name_last}`.localeCompare(`${b.name_first}${b.name_last}`);
-  if(type==='all') renderEdList('all',[...booked].sort(alpha),latest.date);
+  if(type==='all') renderEdList('all',[...booked].sort(alpha),ev.date);
   if(type==='new'){
-    const newP=booked.filter(p=>{const d=personDates(p.person_id);return d[0]===latest.date;});
-    renderEdList('new',[...newP].sort(alpha),latest.date);
+    const newP=booked.filter(p=>{const d=personDates(p.person_id);return d[0]===ev.date;});
+    renderEdList('new',[...newP].sort(alpha),ev.date);
   }
 }
 
@@ -820,6 +835,19 @@ function toggleNoShow(pid){
   if(noShows.has(pid)) noShows.delete(pid);
   else noShows.add(pid);
   renderEventDay(DB.events);
+}
+
+function toggleBn2b(pid,e){
+  e.stopPropagation();
+  pid=String(pid).trim();
+  if(bn2b.has(pid)) bn2b.delete(pid);
+  else bn2b.add(pid);
+  // Write to sheet
+  const evDate=DB.events[selectedIdx]?.date||'';
+  fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',
+    body:JSON.stringify({type:'bn2b',key:SCRIPT_KEY,person_id:pid,event_date:evDate,value:bn2b.has(pid)?1:0})});
+  renderEventDay(DB.events);
+  renderFirstTimers(DB.events);
 }
 
 function renderNoShows(allBooked,eventDate){
@@ -851,16 +879,12 @@ async function saveNsNote(pid,eventDate){
   const savedEl=document.getElementById(`nssaved-${pid}`);
   // Write to Attendance sheet via Apps Script
   try{
-    const r=await fetch(SCRIPT_URL,{
+    await fetch(SCRIPT_URL,{
       method:'POST',
+      mode:'no-cors',
       body:JSON.stringify({type:'note',key:SCRIPT_KEY,person_id:pid,event_date:eventDate,note:ta.value})
     });
-    const d=await r.json();
-    if(d.result==='success'){
-      if(savedEl){savedEl.textContent='✓ Saved to sheet';savedEl.style.color='var(--teal)';savedEl.style.display='block';setTimeout(()=>savedEl.style.display='none',2000);}
-    } else {
-      if(savedEl){savedEl.textContent='⚠ '+d.message;savedEl.style.color='var(--orange)';savedEl.style.display='block';setTimeout(()=>savedEl.style.display='none',4000);}
-    }
+    if(savedEl){savedEl.textContent='✓ Saved to sheet';savedEl.style.color='var(--teal)';savedEl.style.display='block';setTimeout(()=>savedEl.style.display='none',2000);}
   }catch(e){
     if(savedEl){savedEl.textContent='⚠ Network error';savedEl.style.color='var(--pink)';savedEl.style.display='block';setTimeout(()=>savedEl.style.display='none',3000);}
   }
@@ -890,25 +914,40 @@ function renderEdTrackerSummary(events){
 
 // ─── FIRST-TIMERS ──────────────────────────────────────────────────
 function renderFirstTimers(events){
-  const recent=events.slice(-6).reverse();
-  document.getElementById('ft-month-picker').innerHTML=recent.map(e=>`
-    <button class="tog ${e.date===ftSelectedDate?'active':''}" onclick="selectFTMonth('${e.date}',this)">${e.label}</button>`).join('');
+  const selEv=events[selectedIdx]||events[events.length-1];
+  const selDate=selEv?.date||null;
+  const isFuture=selDate&&selDate>new Date().toISOString().split('T')[0];
 
-  const selEv=events.find(e=>e.date===ftSelectedDate)||events[events.length-1];
-  document.getElementById('ft-heading').textContent=`First-Timers — ${selEv?.label||''}`;
+  document.getElementById('ft-month-picker').innerHTML=''; // removed — global nav controls this
+  document.getElementById('ft-heading').textContent=`First-Timers — ${selEv?.label||''}${isFuture?' (pre-event preview)':''}`;
 
-  const ft=DB.people.filter(p=>{
-    const dates=personDates(p.person_id);
-    return dates[0]===ftSelectedDate&&!isTeam(p);
-  });
+  // For future events: show anyone booked who hasn't attended before
+  // For past events: show people whose debut was this event
+  let ft;
+  if(isFuture){
+    // Pre-event: people in attendance tab for this date who have no prior attendance
+    const bookedPids=DB.attendance.filter(a=>a.date===selDate).map(a=>String(a.person_id));
+    ft=DB.people.filter(p=>{
+      const pid=String(p.person_id);
+      if(!bookedPids.includes(pid)||isTeam(p)) return false;
+      const dates=personDates(p.person_id);
+      return dates.length===1&&dates[0]===selDate;
+    });
+  } else {
+    ft=DB.people.filter(p=>{
+      const dates=personDates(p.person_id);
+      return dates[0]===selDate&&!isTeam(p);
+    });
+  }
 
-  document.getElementById('ft-export-note').textContent=ft.length?`${ft.length} people ready to export`:'';
+  document.getElementById('ft-export-note').textContent=ft.length?`${ft.length} ${isFuture?'booked first-timers':'people'} ready to export`:'';
 
   const rows=ft.map(p=>{
-    const pid=p.person_id||`${p.name_first}_${p.name_last}`;
+    const pid=String(p.person_id||`${p.name_first}_${p.name_last}`);
     const saved=notes[pid]||'';
-    return `<tr>
-      <td><strong>${p.name_first} ${p.name_last}</strong></td>
+    const isBn2b=bn2b.has(pid);
+    return `<tr${isBn2b?' style="background:rgba(214,11,82,0.05)"':''}>
+      <td><strong>${p.name_first} ${p.name_last}</strong>${isBn2b?' <span class="badge b-host" style="background:var(--pink);color:#fff">BN2B</span>':''}</td>
       <td style="font-size:12px;color:var(--muted)">${p.company||'—'}</td>
       <td style="font-size:12px">${p.email||'—'}</td>
       <td style="font-size:12px">${p.mobile||'—'}</td>
@@ -921,25 +960,18 @@ function renderFirstTimers(events){
 
   document.getElementById('ft-list').innerHTML=`
     <p style="font-size:13px;color:var(--muted);margin-bottom:10px">
-      <strong style="color:var(--teal)">${ft.length} people</strong> attended for the first time at ${selEv?.label}. Notes save for this session and export with the CSV.
+      <strong style="color:var(--teal)">${ft.length} ${isFuture?'booked so far':'people'}</strong> ${isFuture?'are new to MH Buzz for '+selEv?.label:'attended for the first time at '+selEv?.label}.
     </p>
     <table><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Mobile</th><th style="width:220px">Follow-up Note</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="5" class="empty">No data for this month</td></tr>'}</tbody></table>`;
+    <tbody>${rows||'<tr><td colspan="5" class="empty">No first-timers for this event</td></tr>'}</tbody></table>`;
 
   makeChart('ch-ft','bar',{
     labels:events.map(e=>e.label),
     datasets:[{label:'First-Timers',data:events.map(e=>num(e.total_new)),
-      backgroundColor:events.map(e=>e.date===ftSelectedDate?'#B6BD00':'rgba(182,189,0,0.4)'),borderRadius:3}]
+      backgroundColor:events.map((e,i)=>i===selectedIdx?'#B6BD00':'rgba(182,189,0,0.4)'),borderRadius:3}]
   },{plugins:{legend:{display:false}}});
 
   renderDnr(events);
-}
-
-function selectFTMonth(date,btn){
-  ftSelectedDate=date;
-  document.querySelectorAll('#ft-month-picker .tog').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  renderFirstTimers(DB.events);
 }
 
 async function saveNote(pid){
@@ -948,38 +980,34 @@ async function saveNote(pid){
   notes[pid]=ta.value;
   const savedEl=document.getElementById('saved-'+pid);
   try{
-    const r=await fetch(SCRIPT_URL,{
+    await fetch(SCRIPT_URL,{
       method:'POST',
-      body:JSON.stringify({type:'note',key:SCRIPT_KEY,person_id:pid,event_date:ftSelectedDate,note:ta.value})
+      mode:'no-cors',
+      body:JSON.stringify({type:'note',key:SCRIPT_KEY,person_id:pid,event_date:DB.events[selectedIdx]?.date||'',note:ta.value})
     });
-    const d=await r.json();
-    if(savedEl){
-      savedEl.textContent=d.result==='success'?'✓ Saved to sheet':'⚠ '+d.message;
-      savedEl.style.color=d.result==='success'?'var(--teal)':'var(--orange)';
-      savedEl.style.display='block';
-      setTimeout(()=>savedEl.style.display='none',2000);
-    }
+    if(savedEl){savedEl.textContent='✓ Saved to sheet';savedEl.style.color='var(--teal)';savedEl.style.display='block';setTimeout(()=>savedEl.style.display='none',2000);}
   }catch(e){
     if(savedEl){savedEl.textContent='⚠ Network error';savedEl.style.color='var(--pink)';savedEl.style.display='block';setTimeout(()=>savedEl.style.display='none',3000);}
   }
 }
 
 function exportFTcsv(){
-  const selEv=DB.events.find(e=>e.date===ftSelectedDate)||DB.events[DB.events.length-1];
+  const selEv=DB.events[selectedIdx]||DB.events[DB.events.length-1];
+  const selDate=selEv?.date||null;
   const ft=DB.people.filter(p=>{
     const dates=personDates(p.person_id);
-    return dates[0]===ftSelectedDate&&!isTeam(p);
+    return dates[0]===selDate&&!isTeam(p);
   });
-  if(!ft.length){alert('No first-timers to export for this month.');return;}
-  const rows=[['First Name','Last Name','Company','Email','Mobile','Note']];
+  if(!ft.length){alert('No first-timers to export for this event.');return;}
+  const rows=[['First Name','Last Name','Company','Email','Mobile','BN2B','Note']];
   ft.forEach(p=>{
-    const pid=p.person_id||`${p.name_first}_${p.name_last}`;
-    rows.push([p.name_first,p.name_last,p.company||'',p.email||'',p.mobile||'',notes[pid]||'']);
+    const pid=String(p.person_id||`${p.name_first}_${p.name_last}`);
+    rows.push([p.name_first,p.name_last,p.company||'',p.email||'',p.mobile||'',bn2b.has(pid)?'Yes':'',notes[pid]||'']);
   });
   const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a=document.createElement('a');
   a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download=`first-timers-${selEv?.label?.replace(/\s/g,'-')||ftSelectedDate}.csv`;
+  a.download=`first-timers-${selEv?.label?.replace(/\s/g,'-')||selDate}.csv`;
   a.click();
   document.getElementById('ft-export-note').textContent=`Exported ${ft.length} rows ✓`;
 }
@@ -1258,28 +1286,41 @@ function setDnrWindow(months,btn){
   renderDnr(DB.events);
 }
 
+function setDnrCohort(months,btn){
+  dnrCohort=months;
+  document.querySelectorAll('#cohort-3,#cohort-6,#cohort-12,#cohort-0').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDnr(DB.events);
+}
+
 function renderDnr(events){
   const el=document.getElementById('dnr-list');
   const sub=document.getElementById('dnr-subtitle');
   if(!el) return;
-  // Find all first-timers who debuted more than dnrWindow months ago
-  // and have never returned
-  const cutoff=new Date();
-  cutoff.setMonth(cutoff.getMonth()-dnrWindow);
-  const cutoffStr=cutoff.toISOString().split('T')[0];
+
+  const today=new Date();
+
+  // Cohort cutoff: debut within last dnrCohort months (0 = all time)
+  const cohortCutoff=dnrCohort>0?(()=>{const d=new Date();d.setMonth(d.getMonth()-dnrCohort);return d.toISOString().split('T')[0];})():null;
+
+  // Return window: debut must be at least dnrWindow months ago for us to know they haven't returned
+  const returnCutoff=(()=>{const d=new Date();d.setMonth(d.getMonth()-dnrWindow);return d.toISOString().split('T')[0];})();
 
   const dnr=DB.people.filter(p=>{
     if(isTeam(p)) return false;
     const dates=personDates(p.person_id);
     if(!dates.length) return false;
     const debut=dates[0];
-    // Only include if debut was more than dnrWindow months ago
-    if(debut>=cutoffStr) return false;
-    // Only include if they have exactly 1 visit (never returned)
+    // Must be old enough to have had a chance to return
+    if(debut>returnCutoff) return false;
+    // Cohort filter: debut must be within last dnrCohort months
+    if(cohortCutoff&&debut<cohortCutoff) return false;
+    // Never returned (only 1 attendance)
     return dates.length===1;
   });
 
-  if(sub) sub.textContent=`${dnr.length} people attended once and didn't return within ${dnrWindow} month${dnrWindow>1?'s':''} — potential outreach list`;
+  const cohortLabel=dnrCohort===0?'all time':`last ${dnrCohort} months`;
+  if(sub) sub.textContent=`${dnr.length} people debuted in the ${cohortLabel}, attended once, and didn't return within ${dnrWindow} month${dnrWindow>1?'s':''} — your outreach list`;
 
   if(!dnr.length){el.innerHTML='<div class="empty">No one in this category — great retention! 🎉</div>';return;}
 
