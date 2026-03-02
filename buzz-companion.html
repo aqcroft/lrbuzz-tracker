@@ -853,7 +853,6 @@ async function saveNsNote(pid,eventDate){
   try{
     const r=await fetch(SCRIPT_URL,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({type:'note',key:SCRIPT_KEY,person_id:pid,event_date:eventDate,note:ta.value})
     });
     const d=await r.json();
@@ -951,7 +950,6 @@ async function saveNote(pid){
   try{
     const r=await fetch(SCRIPT_URL,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({type:'note',key:SCRIPT_KEY,person_id:pid,event_date:ftSelectedDate,note:ta.value})
     });
     const d=await r.json();
@@ -1229,7 +1227,6 @@ async function savePlentyEntry(){
   try{
     const r=await fetch(SCRIPT_URL,{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         type:'plenty',key:SCRIPT_KEY,
         event_id:evId,date:dateStr,checkpoint,
