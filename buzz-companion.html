@@ -882,6 +882,7 @@ async function saveNsNote(pid,eventDate){
     await fetch(SCRIPT_URL,{
       method:'POST',
       mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
       body:JSON.stringify({type:'note',key:SCRIPT_KEY,person_id:pid,event_date:eventDate,note:ta.value})
     });
     if(savedEl){savedEl.textContent='✓ Saved to sheet';savedEl.style.color='var(--teal)';savedEl.style.display='block';setTimeout(()=>savedEl.style.display='none',2000);}
@@ -983,6 +984,7 @@ async function saveNote(pid){
     await fetch(SCRIPT_URL,{
       method:'POST',
       mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
       body:JSON.stringify({type:'note',key:SCRIPT_KEY,person_id:pid,event_date:DB.events[selectedIdx]?.date||'',note:ta.value})
     });
     if(savedEl){savedEl.textContent='✓ Saved to sheet';savedEl.style.color='var(--teal)';savedEl.style.display='block';setTimeout(()=>savedEl.style.display='none',2000);}
