@@ -49,7 +49,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .refresh-btn:hover{border-color:var(--teal);color:var(--teal)}
 
 /* TABS */
-.tabs{display:flex;padding:0 20px;border-bottom:2px solid var(--border);background:var(--surface);overflow-x:auto}
+.tabs{display:flex;padding:0 20px;border-bottom:2px solid var(--border);background:var(--surface);overflow-x:auto;position:sticky;top:57px;z-index:99}
 .tab{padding:12px 16px;cursor:pointer;color:var(--muted);font-weight:500;font-size:13px;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s}
 .tab:hover{color:var(--text)}
 .tab.active{color:var(--teal);border-bottom-color:var(--teal);font-weight:600}
@@ -209,7 +209,7 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
 <div id="app" style="display:none">
 
 <header>
-  <div class="logo"><div class="logo-dot"></div>MH Buzz <span>Host Companion</span></div>
+  <div class="logo"><div class="logo-dot"></div>MH Buzz <span>Host Companion</span><span id="header-date" style="font-size:11px;color:var(--muted);font-weight:400;margin-left:10px;font-family:inherit"></span></div>
   <div class="header-right" style="display:flex;align-items:center;gap:10px">
     <button class="sec-btn" style="padding:4px 10px;font-size:12px" onclick="stepEvent(-1)">←</button>
     <div class="header-meta" id="header-meta" style="text-align:center;min-width:120px">—</div>
@@ -295,13 +295,22 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
     </div>
     <!-- FIRST-TIMERS -->
     <div class="card">
-      <div class="card-title">New This Month <span id="ed-new-count" style="color:var(--green);font-size:11px"></span></div>
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+        <span>New This Month <span id="ed-new-count" style="color:var(--green);font-size:11px"></span></span>
+        <div style="display:flex;gap:6px">
+          <button class="sec-btn" style="font-size:11px;padding:3px 8px" onclick="exportEdCsv('new',false)">⬇ Export all</button>
+          <button class="sec-btn" style="font-size:11px;padding:3px 8px;border-color:var(--pink);color:var(--pink)" onclick="exportEdCsv('new',true)">⬇ BN2B only</button>
+        </div>
+      </div>
       <input class="search-box" id="ed-search-new" placeholder="Search..." oninput="filterEdList('new')" style="margin-bottom:8px">
       <div id="ed-list-new" style="max-height:500px;overflow-y:auto"></div>
     </div>
     <!-- NO-SHOWS -->
     <div class="card">
-      <div class="card-title">No-Shows <span id="ed-noshow-count" style="color:var(--pink);font-size:11px"></span></div>
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>No-Shows <span id="ed-noshow-count" style="color:var(--pink);font-size:11px"></span></span>
+        <button class="sec-btn" style="font-size:11px;padding:3px 8px" onclick="exportEdCsv('noshow',false)">⬇ Export</button>
+      </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5">Tap <strong>No-show</strong> in the All Booked list to move people here. Notes save for the session.</div>
       <div id="ed-list-noshow"></div>
     </div>
@@ -354,11 +363,14 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
 <!-- LOYALTY -->
 <div class="page" id="tab-loyalty">
   <div class="kpi-row" id="kpi-loyalty"></div>
-  <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <span class="tog-label">Streak window:</span>
-    <button class="tog active" id="sw-6" onclick="setStreakWindow(6,this)">6 months</button>
-    <button class="tog" id="sw-12" onclick="setStreakWindow(12,this)">12 months</button>
-    <span style="font-size:11px;color:var(--muted);margin-left:8px">Dots: newest ← left &nbsp;·&nbsp; oldest → right</span>
+  <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:space-between">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="tog-label">Streak window:</span>
+      <button class="tog active" id="sw-6" onclick="setStreakWindow(6,this)">6 months</button>
+      <button class="tog" id="sw-12" onclick="setStreakWindow(12,this)">12 months</button>
+      <span style="font-size:11px;color:var(--muted);margin-left:8px">Dots: newest ← left &nbsp;·&nbsp; oldest → right &nbsp;·&nbsp; hover/tap dot for month</span>
+    </div>
+    <button class="sec-btn" style="font-size:12px" onclick="exportLoyaltyCsv()">⬇ Export loyalty report</button>
   </div>
   <div class="grid-2">
     <div class="card">
@@ -522,7 +534,7 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
 <script>
 // ─── PASSWORD ──────────────────────────────────────────────────────
 // Change 'buzz2024' to whatever password you want
-const APP_PASSWORD = 'buzz2024';
+const APP_PASSWORD = 'buzz2026';
 
 function checkPw(){
   const v=document.getElementById('pw-input').value;
@@ -641,6 +653,8 @@ function render(){
   if(selectedIdx===-1) selectedIdx=events.length-1;
   const ev=events[selectedIdx];
   const evLabel=ev?.date?fmtMonthYear(ev.date):(ev?.label||'—');
+  const hdEl=document.getElementById('header-date');
+  if(hdEl) hdEl.textContent=ev?.date?fmtDateLong(ev.date):'';
   document.getElementById('header-meta').innerHTML=
     `Viewing: <strong>${evLabel}</strong> &nbsp;·&nbsp; ${num(ev?.total_booked)} booked &nbsp;·&nbsp; <strong style="color:var(--teal)">${num(ev?.total_new)} first-timers</strong>`;
   renderAll();
@@ -665,6 +679,10 @@ function stepEvent(dir){
   // Update header
   const ev=DB.events[selectedIdx];
   const evLabel=ev?.date?fmtMonthYear(ev.date):(ev?.label||'—');
+  const hdEl=document.getElementById('header-date');
+  if(hdEl) hdEl.textContent=ev?.date?fmtDateLong(ev.date):'';
+  const hdEl2=document.getElementById('header-date');
+  if(hdEl2) hdEl2.textContent=ev?.date?fmtDateLong(ev.date):'';
   document.getElementById('header-meta').innerHTML=
     `Viewing: <strong>${evLabel}</strong> &nbsp;·&nbsp; ${num(ev?.total_booked)} booked &nbsp;·&nbsp; <strong style="color:var(--teal)">${num(ev?.total_new)} first-timers</strong>`;
   renderAll();
@@ -701,7 +719,7 @@ function renderOverview(events){
   render321TrackerData(ev);
 
   makeChart('ch-history','bar',{
-    labels:events.map(e=>e.label),
+    labels:events.map(e=>e.date?fmtMonthShort(e.date):(e.label||e.date)),
     datasets:[
       {label:'Returning',data:events.map(e=>num(e.total_returning)),backgroundColor:events.map((e,i)=>i===selectedIdx?'rgba(0,161,154,0.95)':'rgba(0,161,154,0.45)'),stack:'a'},
       {label:'New',data:events.map(e=>num(e.total_new)),backgroundColor:events.map((e,i)=>i===selectedIdx?'rgba(182,189,0,0.95)':'rgba(182,189,0,0.55)'),stack:'a'},
@@ -1127,7 +1145,10 @@ function renderLoyalty(events){
     const reversed=[...windowDates].reverse();
     return reversed.map((d,i)=>{
       const hit=attended(p.person_id,d);
-      return `<div class="sdot ${hit?(i<3?'hit':'hit-old'):''}"></div>`;
+      const ev=DB.events.find(e=>e.date===d);
+      const label=ev?.date?fmtMonthShort(ev.date):(ev?.label||d);
+      const cls=hit?(i<3?'hit':'hit-old'):'';
+      return `<div class="sdot ${cls}" title="${label}${hit?' ✓':' —'}" style="cursor:pointer"></div>`;
     }).join('');
   }
 
@@ -1629,6 +1650,91 @@ function renderDnr(events){
 }
 
 
+// ─── EVENT DAY EXPORTS ────────────────────────────────────────────
+function exportEdCsv(listType, bn2bOnly){
+  const ev=DB.events[selectedIdx]||DB.events[DB.events.length-1];
+  const evDate=ev?.date||'';
+  const evLabel=ev?.date?fmtMonthShort(ev.date):(ev?.label||'event');
+
+  let people=[];
+  if(listType==='new'){
+    // Get booked people for this event who are first-timers
+    const booked=DB.attendance.filter(a=>{
+      let d=a.date;
+      if(d instanceof Date) d=d.toISOString().split('T')[0];
+      else d=String(d).split('T')[0];
+      return d===evDate;
+    });
+    booked.forEach(a=>{
+      const p=DB.people.find(pp=>String(pp.person_id)===String(a.person_id));
+      if(!p) return;
+      const dates=personDates(p.person_id);
+      const isNew=dates.length<=1||(dates.length>0&&dates[0]===evDate);
+      const isBn2b=bn2b.has(String(p.person_id));
+      if(bn2bOnly&&!isBn2b) return;
+      if(!bn2bOnly&&!isNew) return;
+      people.push({...p, is_bn2b:isBn2b?'yes':''});
+    });
+  } else if(listType==='noshow'){
+    noShows.forEach(pid=>{
+      const p=DB.people.find(pp=>String(pp.person_id)===String(pid));
+      if(p) people.push({...p, is_bn2b:''});
+    });
+  }
+
+  if(!people.length){alert('No data to export for this list.');return;}
+
+  const rows=[['To','FirstName','LastName','Company','Email','Mobile','BN2B']];
+  people.forEach(p=>rows.push([
+    p.email||'',
+    p.name_first||'',p.name_last||'',
+    p.company||'',p.email||'',p.mobile||'',
+    p.is_bn2b||''
+  ]));
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  const suffix=listType==='noshow'?'no-shows':bn2bOnly?'bn2b-only':'new-this-month';
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`${suffix}-${evLabel.replace(/\s/g,'-')}.csv`;
+  a.click();
+}
+
+// ─── LOYALTY EXPORT ───────────────────────────────────────────────
+function exportLoyaltyCsv(){
+  const people=DB.people.filter(p=>!isTeam(p));
+  const swDates=(DB.events||[]).slice(-streakWindow).map(e=>e.date);
+  const threshold=Math.ceil(streakWindow*0.67);
+
+  function getSW(p){ return swDates.filter(d=>attended(p.person_id,d)).length; }
+  function getL12(p){ return (DB.events||[]).slice(-12).filter(d=>attended(p.person_id,d.date)).length; }
+
+  const rows=[['To','FirstName','LastName','Company','Email','Mobile',
+    'TotalAttended','Last12Months',`Streak_${streakWindow}m`,`StreakThreshold_${streakWindow}m`,
+    'IsHotStreak','IsLapsed','IsCandidate']];
+
+  const last3Dates=(DB.events||[]).slice(-3).map(e=>e.date);
+
+  people.sort((a,b)=>num(b.total_attended)-num(a.total_attended)).forEach(p=>{
+    const sw=getSW(p);
+    const l12=getL12(p);
+    const isStreak=sw>=threshold?'yes':'';
+    const isLapsed=num(p.total_attended)>=3&&!last3Dates.some(d=>attended(p.person_id,d))?'yes':'';
+    const isCand=!p.role&&num(p.total_attended)>=8&&l12>0?'yes':'';
+    rows.push([
+      p.email||'',p.name_first||'',p.name_last||'',
+      p.company||'',p.email||'',p.mobile||'',
+      num(p.total_attended),l12,sw,`${threshold}/${streakWindow}`,
+      isStreak,isLapsed,isCand
+    ]);
+  });
+
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`loyalty-report-${streakWindow}m-window.csv`;
+  a.click();
+}
+
 function exportPlentyCsv(){
   if(!plentyCsvAttendees.length){alert('Upload a CSV first.');return;}
   const knownEmails=new Set(DB.people.map(p=>(p.email||'').toLowerCase().trim()));
@@ -1667,12 +1773,13 @@ function scoreStyle(s){
 
 function renderHealth(events){
   events=DB.events;
-  const latest=calcHealth(events.length-1);
+  const idx=selectedIdx>=1?selectedIdx:events.length-1;
+  const latest=calcHealth(idx);
   if(!latest) return;
   const[col,label]=scoreStyle(latest.total);
   document.getElementById('health-score').style.color=col;
   document.getElementById('health-score').textContent=latest.total;
-  document.getElementById('health-label').textContent=`${label} — ${events[events.length-1].label}`;
+  document.getElementById('health-label').textContent=`${label} — ${events[idx]?.date?fmtMonthYear(events[idx].date):(events[idx]?.label||'—')}`;
   document.getElementById('health-breakdown').innerHTML=`
     <div class="health-row"><span>Acquisition (35%)</span><span style="color:var(--teal)">${latest.acq}/100 · ${Math.round(latest.acqRaw*100)}% new</span></div>
     <div class="health-row"><span>Retention (40%)</span><span style="color:var(--orange)">${latest.ret}/100 · ${Math.round(latest.retRaw*100)}% returned</span></div>
