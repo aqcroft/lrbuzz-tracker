@@ -327,6 +327,13 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
     <div id="dnr-list"></div>
   </div>
 
+  <!-- Returning milestones -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-title">Early Return Milestones — Last 3 Months</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">People who debuted in the last 3 months and have already come back. Perfect for personal recognition.</div>
+    <div id="milestone-list"></div>
+  </div>
+
   <div class="card"><div class="card-title">First-Timers Per Month — Full History</div><div class="chart-wrap-lg"><canvas id="ch-ft"></canvas></div></div>
 </div>
 
@@ -424,6 +431,8 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
             <div id="plenty-save-status" style="font-size:12px;display:none"></div>
           </div>
         </div>
+        <!-- First-timer preview from CSV -->
+        <div id="plenty-ft-preview" style="margin-top:12px"></div>
       </div>
     </div>
     <div class="card"><div class="card-title">Booking Curves — This Event vs Previous Month</div><div class="chart-wrap-lg"><canvas id="ch-plenty"></canvas></div></div>
@@ -973,6 +982,48 @@ function renderFirstTimers(events){
   },{plugins:{legend:{display:false}}});
 
   renderDnr(events);
+  renderMilestones(events);
+}
+
+function renderMilestones(events){
+  const el=document.getElementById('milestone-list');
+  if(!el) return;
+
+  const cutoff=new Date();
+  cutoff.setMonth(cutoff.getMonth()-3);
+  const cutoffStr=cutoff.toISOString().split('T')[0];
+
+  const milestones={2:[],3:[]};
+  DB.people.filter(p=>!isTeam(p)).forEach(p=>{
+    const dates=personDates(p.person_id);
+    if(!dates.length) return;
+    const debut=dates[0];
+    if(debut<cutoffStr) return;
+    const visitsInWindow=dates.filter(d=>d>=cutoffStr).length;
+    if(visitsInWindow===2) milestones[2].push({p,debut});
+    if(visitsInWindow>=3) milestones[3].push({p,debut});
+  });
+
+  if(!milestones[2].length&&!milestones[3].length){
+    el.innerHTML='<div class="empty">No early return milestones in the last 3 months.</div>';
+    return;
+  }
+
+  let html='';
+  [3,2].forEach(n=>{
+    if(!milestones[n].length) return;
+    const label=n===2?'🥈 Back for their second visit':'🥇 Third visit — building a habit!';
+    const rows=milestones[n].map(({p,debut})=>`<tr>
+      <td><strong>${p.name_first} ${p.name_last}</strong></td>
+      <td style="font-size:12px;color:var(--muted)">${p.company||'—'}</td>
+      <td style="font-size:12px">${p.email||'—'}</td>
+      <td style="font-size:12px;color:var(--teal)">${debut}</td>
+    </tr>`).join('');
+    html+=`<div style="font-size:12px;font-weight:600;margin:${n===3?'0':'12px'} 0 6px">${label}</div>
+    <table><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Debuted</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+  });
+  el.innerHTML=html;
 }
 
 async function saveNote(pid){
@@ -1196,6 +1247,9 @@ function autoCheckpoint(){
   return '4 weeks out';
 }
 
+// Store parsed CSV attendees for pre-event first-timer preview
+let plentyCsvAttendees=[];
+
 function parsePlentyCsv(input){
   const file=input.files[0];
   if(!file) return;
@@ -1203,31 +1257,76 @@ function parsePlentyCsv(input){
   const reader=new FileReader();
   reader.onload=function(e){
     try{
-      const lines=e.target.result.split('\n');
-      const headers=lines[0].split(',').map(h=>h.replace(/"/g,'').trim().toLowerCase());
-      const rows=lines.slice(1).filter(l=>l.trim()).map(l=>{
-        const cols=l.split(',').map(c=>c.replace(/"/g,'').trim());
-        const obj={};
-        headers.forEach((h,i)=>obj[h]=cols[i]||'');
-        return obj;
-      });
-      // Count total, new (first attendance = no prior record)
-      const total=rows.length;
-      // "new" = first time we see this email/name
-      const emails=rows.map(r=>r.email||r['email address']||'').filter(Boolean);
-      const knownEmails=new Set(DB.people.map(p=>(p.email||'').toLowerCase()));
-      let newCount=0;
-      emails.forEach(em=>{if(em&&!knownEmails.has(em.toLowerCase()))newCount++;});
-      const returning=total-newCount;
-      document.getElementById('inp-t').value=total;
+      // Parse CSV fields properly (handles quoted commas)
+      function parseCsvLine(line){
+        const result=[];let cur='';let inQ=false;
+        for(let i=0;i<line.length;i++){
+          const ch=line[i];
+          if(ch==='"'){inQ=!inQ;}
+          else if(ch===','&&!inQ){result.push(cur.trim());cur='';}
+          else cur+=ch;
+        }
+        result.push(cur.trim());
+        return result;
+      }
+
+      const lines=e.target.result.split('\n').map(l=>l.replace(/\r/g,''));
+
+      // Extract headline totals from fixed metadata rows
+      const paying=parseInt((parseCsvLine(lines[2]||'')[1]||'').replace(/[^0-9]/g,''))||0;
+      const nonPaying=parseInt((parseCsvLine(lines[3]||'')[1]||'').replace(/[^0-9]/g,''))||0;
+      const total=paying+nonPaying;
+
+      // Attendee rows start at row 8 (index 7), after "Attendees" header row
+      // Columns: 0=first, 1=last, 2=email, 3=mobile, 4=job_title, 5=company, 6=location
+      const attendeeLines=lines.slice(7).filter(l=>l.trim()&&parseCsvLine(l)[0]);
+      plentyCsvAttendees=attendeeLines.map(l=>{
+        const c=parseCsvLine(l);
+        return {
+          first:(c[0]||'').replace(/"/g,'').trim(),
+          last:(c[1]||'').replace(/"/g,'').trim(),
+          email:(c[2]||'').replace(/"/g,'').trim().toLowerCase(),
+          mobile:(c[3]||'').replace(/"/g,'').trim(),
+          company:(c[5]||'').replace(/"/g,'').trim()
+        };
+      }).filter(a=>a.first||a.email);
+
+      // Identify new vs returning by comparing email against People tab
+      const knownEmails=new Set(DB.people.map(p=>(p.email||'').toLowerCase().trim()));
+      const newAttendees=plentyCsvAttendees.filter(a=>a.email&&!knownEmails.has(a.email));
+      const newCount=newAttendees.length;
+      const returning=plentyCsvAttendees.length-newCount;
+
+      // Populate form fields
+      document.getElementById('inp-t').value=total||plentyCsvAttendees.length;
       document.getElementById('inp-new').value=newCount;
       document.getElementById('inp-ret').value=returning;
-      status.textContent=`✓ ${total} bookings loaded — ${newCount} new, ${returning} returning`;
-      // Auto-detect checkpoint
+
+      // Auto checkpoint
       const cp=autoCheckpoint();
       document.getElementById('checkpoint-auto').textContent=cp;
+
+      // Show first-timer preview list
+      const previewEl=document.getElementById('plenty-ft-preview');
+      if(previewEl){
+        if(newAttendees.length){
+          const rows=newAttendees.map(a=>`<tr>
+            <td><strong>${a.first} ${a.last}</strong></td>
+            <td style="font-size:12px;color:var(--muted)">${a.company||'—'}</td>
+            <td style="font-size:12px">${a.email||'—'}</td>
+          </tr>`).join('');
+          previewEl.innerHTML=`<div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:6px">${newCount} first-timers in this upload</div>
+            <table><thead><tr><th>Name</th><th>Company</th><th>Email</th></tr></thead>
+            <tbody>${rows}</tbody></table>`;
+        } else {
+          previewEl.innerHTML='<div class="empty" style="font-size:12px">No new attendees detected in this upload.</div>';
+        }
+      }
+
+      status.textContent=`✓ ${total} booked (${paying} paying, ${nonPaying} free) — ${newCount} new to MH Buzz, ${returning} returning`;
     }catch(err){
-      status.textContent='⚠ Could not parse CSV — check format';
+      console.error(err);
+      document.getElementById('plenty-csv-status').textContent='⚠ Could not parse CSV — check format';
     }
   };
   reader.readAsText(file);
