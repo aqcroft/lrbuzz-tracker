@@ -102,7 +102,7 @@ tr:hover td{background:var(--surface2)}
 .streak-bar{display:flex;gap:3px;align-items:center}
 .sdot{width:10px;height:10px;border-radius:2px;background:var(--surface2);border:1px solid var(--border)}
 .sdot.hit{background:var(--teal);border-color:var(--teal)}
-.sdot.hit-old{background:rgba(0,161,154,0.4);border-color:rgba(0,161,154,0.4)}
+.sdot.hit-attended{background:rgba(182,189,0,0.45);border-color:rgba(182,189,0,0.5)}
 
 .search-box{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:9px 13px;color:var(--text);font-family:inherit;font-size:13px;margin-bottom:12px;outline:none;box-shadow:var(--shadow)}
 .search-box:focus{border-color:var(--teal)}
@@ -1142,12 +1142,19 @@ function renderLoyalty(events){
   }
 
   function streakDots(p,windowDates){
-    const reversed=[...windowDates].reverse();
+    const reversed=[...windowDates].reverse(); // reversed[0] = most recent
+    // Find how long the current unbroken streak is from the most recent event
+    let currentStreak=0;
+    for(let i=0;i<reversed.length;i++){
+      if(attended(p.person_id,reversed[i])) currentStreak++;
+      else break;
+    }
     return reversed.map((d,i)=>{
       const hit=attended(p.person_id,d);
       const ev=DB.events.find(e=>e.date===d);
       const label=ev?.date?fmtMonthShort(ev.date):(ev?.label||d);
-      const cls=hit?(i<3?'hit':'hit-old'):'';
+      // Dark teal = within current unbroken streak, light green = attended but streak broken, empty = missed
+      const cls=hit?(i<currentStreak?'hit':'hit-attended'):'';
       return `<div class="sdot ${cls}" title="${label}${hit?' ✓':' —'}" style="cursor:pointer"></div>`;
     }).join('');
   }
