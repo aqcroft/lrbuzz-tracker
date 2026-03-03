@@ -210,8 +210,10 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
 
 <header>
   <div class="logo"><div class="logo-dot"></div>MH Buzz <span>Host Companion</span></div>
-  <div class="header-right">
-    <div class="header-meta" id="header-meta">—</div>
+  <div class="header-right" style="display:flex;align-items:center;gap:10px">
+    <button class="sec-btn" style="padding:4px 10px;font-size:12px" onclick="stepEvent(-1)">←</button>
+    <div class="header-meta" id="header-meta" style="text-align:center;min-width:120px">—</div>
+    <button class="sec-btn" id="overview-next-btn" style="padding:4px 10px;font-size:12px" onclick="stepEvent(1)">→</button>
     <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
   </div>
 </header>
@@ -230,9 +232,8 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
 <div class="page active" id="tab-overview">
   <!-- Month nav -->
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-    <button class="sec-btn" onclick="stepOverview(-1)">← Prev</button>
     <span style="font-family:'DM Serif Display',serif;font-size:18px" id="overview-month-label">—</span>
-    <button class="sec-btn" id="overview-next-btn" onclick="stepOverview(1)">Next →</button>
+
   </div>
   <div class="kpi-row" id="kpi-overview"></div>
   <div class="grid-2">
@@ -376,6 +377,19 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
     <div>
       <div class="section-head" id="plenty-title">Next Event — Booking Tracker</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px" id="plenty-subtitle"></div>
+      <!-- Latest snapshot summary -->
+      <div id="plenty-latest-snapshot" style="display:none;margin-bottom:12px;padding:10px 14px;background:var(--surface2);border-radius:8px;font-size:12px">
+        <span style="color:var(--muted);margin-right:8px">Latest snapshot:</span>
+        <strong id="snap-checkpoint"></strong>
+        <span style="color:var(--border);margin:0 8px">·</span>
+        <span id="snap-total" style="color:var(--teal);font-weight:600"></span> booked
+        <span style="color:var(--border);margin:0 8px">·</span>
+        <span id="snap-new" style="color:var(--green);font-weight:600"></span> new
+        <span style="color:var(--border);margin:0 8px">·</span>
+        <span id="snap-linkedin"></span> LinkedIn
+        <span style="color:var(--border);margin:0 8px">·</span>
+        <span style="color:var(--muted)" id="snap-logged"></span>
+      </div>
       <div class="plenty-grid" id="plenty-checkpoints"></div>
       <div class="projection-box">
         <div class="proj-label">Projected Day-Of Attendance</div>
@@ -433,6 +447,9 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
         </div>
         <!-- First-timer preview from CSV -->
         <div id="plenty-ft-preview" style="margin-top:12px"></div>
+        <div id="plenty-ft-export-wrap" style="margin-top:8px;display:none">
+          <button class="sec-btn" onclick="exportPlentyCsv()">⬇ Export first-timers CSV</button>
+        </div>
       </div>
     </div>
     <div class="card"><div class="card-title">Booking Curves — This Event vs Previous Month</div><div class="chart-wrap-lg"><canvas id="ch-plenty"></canvas></div></div>
@@ -1162,12 +1179,26 @@ function renderPlenty(events){
     {key:'D-4',label:'Thu'},{key:'D-3',label:'Fri'},{key:'D-2',label:'Wknd'},
     {key:'D-1',label:'Mon'},{key:'event_day',label:'Day'},
   ];
-  const nextEv=events[events.length-1],prevEv=events[events.length-2];
+  const nextEv=events[selectedIdx]||events[events.length-1];
+  const prevEv=events[selectedIdx-1]||events[events.length-2];
   document.getElementById('plenty-title').textContent=`${nextEv?.label||'Next Event'} — Booking Tracker`;
   document.getElementById('plenty-subtitle').textContent=prevEv?`Comparing against ${prevEv.label} (orange)`:'';
 
   const nextPlenty=plenty.filter(p=>p.event_id===nextEv?.event_id);
   const prevPlenty=plenty.filter(p=>p.event_id===prevEv?.event_id);
+
+  // Latest snapshot bar
+  const snapEl=document.getElementById('plenty-latest-snapshot');
+  if(nextPlenty.length&&snapEl){
+    const latest=nextPlenty[nextPlenty.length-1];
+    snapEl.style.display='block';
+    document.getElementById('snap-checkpoint').textContent=latest.checkpoint||'—';
+    document.getElementById('snap-total').textContent=latest.total_booked||'—';
+    document.getElementById('snap-new').textContent=latest.new_bookings||'—';
+    document.getElementById('snap-linkedin').textContent=(latest.linkedin||'—')+' LinkedIn';
+    const ts=latest.logged_at||latest.date||'';
+    document.getElementById('snap-logged').textContent=ts?'logged '+new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+  } else if(snapEl) snapEl.style.display='none';
   let lastKnownT=null,lastKnownCp=null;
 
   const cpHtml=checkpoints.map((cp,idx)=>{
@@ -1324,6 +1355,8 @@ function parsePlentyCsv(input){
       }
 
       status.textContent=`✓ ${total} booked (${paying} paying, ${nonPaying} free) — ${newCount} new to MH Buzz, ${returning} returning`;
+      const expWrap=document.getElementById('plenty-ft-export-wrap');
+      if(expWrap) expWrap.style.display=newCount>0?'block':'none';
     }catch(err){
       console.error(err);
       document.getElementById('plenty-csv-status').textContent='⚠ Could not parse CSV — check format';
@@ -1436,6 +1469,21 @@ function renderDnr(events){
   <tbody>${rows}</tbody></table>`;
 }
 
+
+function exportPlentyCsv(){
+  if(!plentyCsvAttendees.length){alert('Upload a CSV first.');return;}
+  const knownEmails=new Set(DB.people.map(p=>(p.email||'').toLowerCase().trim()));
+  const newOnes=plentyCsvAttendees.filter(a=>a.email&&!knownEmails.has(a.email));
+  if(!newOnes.length){alert('No new attendees to export.');return;}
+  const rows=[['To','FirstName','LastName','Company','Email','Mobile']];
+  newOnes.forEach(a=>rows.push([a.email,a.first,a.last,a.company||'',a.email,a.mobile||'']));
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  const ev=DB.events[selectedIdx]||DB.events[DB.events.length-1];
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=`first-timers-${ev?.label?.replace(/\s/g,'-')||'export'}.csv`;
+  a.click();
+}
 
 // ─── HEALTH ────────────────────────────────────────────────────────
 function calcHealth(idx){
