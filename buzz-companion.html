@@ -269,6 +269,19 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
     <div id="ed-tracker-summary"><div class="empty">Attendance figures pulled from 321 Tracker submission. Submit the buzzer tool after the event to populate.</div></div>
   </div>
 
+  <!-- CSV Import -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Import Booking CSV</span>
+      <span id="ed-import-status" style="font-size:12px;color:var(--teal)"></span>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Upload the Buzz booking report CSV. Can be run multiple times — each import overwrites the previous one for this event date.</div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <input type="file" id="ed-csv-upload" accept=".csv" onchange="importEventDayCsv(this)" style="font-size:12px">
+      <div id="ed-import-detail" style="font-size:11px;color:var(--muted)"></div>
+    </div>
+  </div>
+
   <!-- Summary KPIs (populated after data loads) -->
   <div class="ed-summary" id="ed-summary"></div>
 
@@ -627,8 +640,9 @@ function render(){
   const events=DB.events;
   if(selectedIdx===-1) selectedIdx=events.length-1;
   const ev=events[selectedIdx];
+  const evLabel=ev?.date?fmtMonthYear(ev.date):(ev?.label||'—');
   document.getElementById('header-meta').innerHTML=
-    `Viewing: <strong>${ev?.label||'—'}</strong> &nbsp;·&nbsp; ${num(ev?.total_booked)} booked &nbsp;·&nbsp; <strong style="color:var(--teal)">${num(ev?.total_new)} first-timers</strong>`;
+    `Viewing: <strong>${evLabel}</strong> &nbsp;·&nbsp; ${num(ev?.total_booked)} booked &nbsp;·&nbsp; <strong style="color:var(--teal)">${num(ev?.total_new)} first-timers</strong>`;
   renderAll();
 }
 
@@ -650,8 +664,9 @@ function stepEvent(dir){
   selectedIdx=Math.max(0,Math.min(max,selectedIdx+dir));
   // Update header
   const ev=DB.events[selectedIdx];
+  const evLabel=ev?.date?fmtMonthYear(ev.date):(ev?.label||'—');
   document.getElementById('header-meta').innerHTML=
-    `Viewing: <strong>${ev?.label||'—'}</strong> &nbsp;·&nbsp; ${num(ev?.total_booked)} booked &nbsp;·&nbsp; <strong style="color:var(--teal)">${num(ev?.total_new)} first-timers</strong>`;
+    `Viewing: <strong>${evLabel}</strong> &nbsp;·&nbsp; ${num(ev?.total_booked)} booked &nbsp;·&nbsp; <strong style="color:var(--teal)">${num(ev?.total_new)} first-timers</strong>`;
   renderAll();
 }
 
@@ -1276,6 +1291,150 @@ function autoCheckpoint(){
   if(diff<=17) return '2 weeks out';
   if(diff<=24) return '3 weeks out';
   return '4 weeks out';
+}
+
+// ─── DATE FORMATTING ──────────────────────────────────────────────
+function fmtDateLong(dateStr){
+  if(!dateStr) return '—';
+  const d=new Date(dateStr);
+  if(isNaN(d)) return dateStr;
+  const day=d.getDate();
+  const suf=day===1||day===21||day===31?'st':day===2||day===22?'nd':day===3||day===23?'rd':'th';
+  return `${day}${suf} ${d.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}`;
+}
+function fmtDateShort(dateStr){
+  if(!dateStr) return '—';
+  const d=new Date(dateStr);
+  if(isNaN(d)) return dateStr;
+  return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'}).replace(/ /g,' ');
+}
+function fmtMonthYear(dateStr){
+  if(!dateStr) return '—';
+  const d=new Date(dateStr);
+  if(isNaN(d)) return dateStr;
+  return d.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+}
+function fmtMonthShort(dateStr){
+  if(!dateStr) return '—';
+  const d=new Date(dateStr);
+  if(isNaN(d)) return dateStr;
+  return d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'});
+}
+
+// ─── EVENT DAY CSV IMPORT ─────────────────────────────────────────
+function importEventDayCsv(input){
+  const file=input.files[0];
+  if(!file) return;
+  const statusEl=document.getElementById('ed-import-status');
+  const detailEl=document.getElementById('ed-import-detail');
+  statusEl.textContent='Reading CSV…';
+
+  const reader=new FileReader();
+  reader.onload=async function(e){
+    try{
+      function parseCsvLine(line){
+        const result=[];let cur='';let inQ=false;
+        for(let i=0;i<line.length;i++){
+          const ch=line[i];
+          if(ch==='"'){ inQ=!inQ; }
+          else if(ch===','&&!inQ){result.push(cur.trim());cur='';}
+          else cur+=ch;
+        }
+        result.push(cur.trim());
+        return result;
+      }
+
+      const lines=e.target.result.split('\n').map(l=>l.replace(/\r/g,''));
+      const paying=parseInt((parseCsvLine(lines[2]||''  )[1]||''  ).replace(/[^0-9]/g,''))||0;
+      const nonPaying=parseInt((parseCsvLine(lines[3]||''  )[1]||''  ).replace(/[^0-9]/g,''))||0;
+      const totalBooked=paying+nonPaying;
+
+      // Attendees from row 8 onwards
+      const attendeeLines=lines.slice(7).filter(l=>l.trim()&&parseCsvLine(l)[0]);
+      const attendees=attendeeLines.map(l=>{
+        const c=parseCsvLine(l);
+        return {
+          first:(c[0]||''  ).replace(/"/g,'').trim(),
+          last:(c[1]||''  ).replace(/"/g,'').trim(),
+          email:(c[2]||''  ).replace(/"/g,'').trim().toLowerCase(),
+          mobile:(c[3]||''  ).replace(/"/g,'').trim(),
+          jobTitle:(c[4]||''  ).replace(/"/g,'').trim(),
+          company:(c[5]||''  ).replace(/"/g,'').trim(),
+          location:(c[6]||''  ).replace(/"/g,'').trim()
+        };
+      }).filter(a=>a.first||a.email);
+
+      const ev=DB.events[selectedIdx]||DB.events[DB.events.length-1];
+      if(!ev){statusEl.textContent='⚠ No event selected';return;}
+
+      const evDate=ev.date;
+      const evId=ev.event_id;
+
+      // Build email→person lookup from People tab
+      const emailToPerson={};
+      DB.people.forEach(p=>{
+        if(p.email) emailToPerson[p.email.toLowerCase().trim()]=p;
+      });
+
+      // Work out which attendees are new vs known
+      // "new to MH Buzz" = never appeared in Attendance before today
+      const allAttendedEmails=new Set();
+      DB.attendance.forEach(a=>{
+        const p=DB.people.find(pp=>String(pp.person_id)===String(a.person_id));
+        if(p?.email) allAttendedEmails.add(p.email.toLowerCase().trim());
+      });
+
+      let newCount=0;
+      const rows=attendees.map(a=>{
+        const known=emailToPerson[a.email];
+        const isNew=!a.email||!allAttendedEmails.has(a.email);
+        if(isNew) newCount++;
+        return {
+          event_id:evId,
+          date:evDate,
+          person_id:known?.person_id||'NEW_'+a.email,
+          name:a.first+' '+a.last,
+          email:a.email,
+          mobile:a.mobile,
+          company:a.company,
+          booked:'yes',
+          attended:'',
+          is_new:isNew?1:0,
+          first_name:a.first,
+          last_name:a.last,
+          job_title:a.jobTitle
+        };
+      });
+
+      statusEl.textContent='Saving to sheet…';
+
+      const r=await fetch(SCRIPT_URL,{
+        method:'POST',
+        mode:'no-cors',
+        headers:{'Content-Type':'text/plain'},
+        body:JSON.stringify({
+          type:'csv_import',
+          key:SCRIPT_KEY,
+          event_id:evId,
+          event_date:evDate,
+          total_booked:totalBooked,
+          total_new:newCount,
+          attendees:rows
+        })
+      });
+
+      statusEl.textContent='✓ '+attendees.length+' attendees imported';
+      detailEl.textContent=totalBooked+' booked · '+newCount+' new to MH Buzz · '+paying+' paying · '+nonPaying+' free';
+
+      // Reload data to reflect import
+      setTimeout(()=>loadAll(),1500);
+
+    }catch(err){
+      console.error(err);
+      document.getElementById('ed-import-status').textContent='⚠ Import failed: '+err.message;
+    }
+  };
+  reader.readAsText(file);
 }
 
 // Store parsed CSV attendees for pre-event first-timer preview
