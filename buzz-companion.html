@@ -211,9 +211,11 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
 <header>
   <div class="logo"><div class="logo-dot"></div>MH Buzz <span>Host Companion</span><span id="header-date" style="font-size:11px;color:var(--muted);font-weight:400;margin-left:10px;font-family:inherit"></span></div>
   <div class="header-right" style="display:flex;align-items:center;gap:10px">
-    <button class="sec-btn" style="padding:4px 10px;font-size:12px" onclick="stepEvent(-1)">←</button>
-    <div class="header-meta" id="header-meta" style="text-align:center;min-width:120px">—</div>
-    <button class="sec-btn" id="overview-next-btn" style="padding:4px 10px;font-size:12px" onclick="stepEvent(1)">→</button>
+    <div class="header-meta" id="header-meta" style="text-align:right;min-width:90px">—</div>
+    <div style="display:flex;gap:4px;flex-shrink:0">
+      <button class="sec-btn" style="padding:4px 10px;font-size:12px" onclick="stepEvent(-1)">←</button>
+      <button class="sec-btn" id="overview-next-btn" style="padding:4px 10px;font-size:12px" onclick="stepEvent(1)">→</button>
+    </div>
     <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
   </div>
 </header>
@@ -864,7 +866,7 @@ function render321TrackerData(ev){
 function renderEventDay(events){
   const latest=events[selectedIdx]||events[events.length-1];
   if(!latest){document.getElementById('ed-heading').textContent='Event Day — no data';return;}
-  document.getElementById('ed-heading').textContent=`Event Day — ${latest.label}`;
+  document.getElementById('ed-heading').textContent=`Event Day — ${latest.date?fmtDateLong(latest.date):(latest.label||'')}`;
 
   // Populate tracker summary card
   renderEdTrackerSummary(events);
@@ -1074,11 +1076,22 @@ function renderEdTrackerSummary(events){
   }
   const inRoom=row.in_room||'—';
   const hostTeam=row.hosting_team||'—';
-  el.innerHTML=`<div style="display:flex;gap:16px;flex-wrap:wrap">
+  // Support both old and new column name
+  const trackerUsers=row['321_tracker_users']||row.total_buzzers||'—';
+  const met3=row.met_3_new||'—';
+  const one2ones=row.one_2_ones||'—';
+  const brought1=row.brought_some1||'—';
+  const engagement=(trackerUsers!=='—'&&inRoom!=='—'&&inRoom!=='0')?Math.round(parseInt(trackerUsers)/parseInt(inRoom)*100)+'%':'—';
+  el.innerHTML=`<div style="display:flex;gap:12px;flex-wrap:wrap">
     <div class="ed-kpi"><div class="ed-kpi-val c-teal">${inRoom}</div><div class="ed-kpi-label">In the Room</div></div>
     <div class="ed-kpi"><div class="ed-kpi-val">${hostTeam}</div><div class="ed-kpi-label">Hosting Team</div></div>
-    <div class="ed-kpi"><div class="ed-kpi-val c-green">${row.total_buzzers||'—'}</div><div class="ed-kpi-label">Total Buzzers</div></div>
-    <div class="ed-kpi"><div class="ed-kpi-val">${inRoom&&row.total_buzzers&&inRoom!=='—'?Math.round(row.total_buzzers/inRoom*100)+'%':'—'}</div><div class="ed-kpi-label">Buzzer Engagement</div></div>
+    <div class="ed-kpi"><div class="ed-kpi-val c-green">${trackerUsers}</div><div class="ed-kpi-label">321 Tracker Users</div></div>
+    <div class="ed-kpi"><div class="ed-kpi-val">${engagement}</div><div class="ed-kpi-label">Tracker Engagement</div></div>
+    <div class="ed-kpi" style="border-top:1px solid var(--border);padding-top:10px;width:100%;display:flex;gap:12px;flex-wrap:wrap;padding-bottom:0;margin-top:4px">
+      <div class="ed-kpi"><div class="ed-kpi-val c-orange">${met3}</div><div class="ed-kpi-label">Met 3 New</div></div>
+      <div class="ed-kpi"><div class="ed-kpi-val c-orange">${one2ones}</div><div class="ed-kpi-label">Set 2 1-2-1s</div></div>
+      <div class="ed-kpi"><div class="ed-kpi-val c-orange">${brought1}</div><div class="ed-kpi-label">Brought 1</div></div>
+    </div>
   </div>`;
 }
 
