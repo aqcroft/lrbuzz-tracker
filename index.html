@@ -37,7 +37,7 @@
         const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
         const COOLDOWN = 3000;
         const BUZZER_WINDOW = 5000;
-        const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxhP0-3gLV4Ma6SdfY30qXLcy8twnxNpiNiFMjtys_1NwY2-xA5qBEd-ULvf4CFztGikg/exec';
+        const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxFwsTaVsTi6HV-uMvyejn2D7pqFI2lvDejYaDKvYlRqf8hI7giVDGu1V8_UU_eAxeElw/exec';
 
         const formatBritishDate = (isoDate) => {
             if (!isoDate) return '';
@@ -106,7 +106,7 @@
             };
 
             const submitToSheets = async (eventData) => {
-                const payload = { venue: eventData.venue, month: eventData.month, date: eventData.date, metThreeNew: eventData.scores.blue, oneToOnes: eventData.scores.red, broughtSomeone: eventData.scores.green, inRoom: eventData.inRoom || '', hostingTeam: eventData.team || '', buzzIn: eventData.buzzInCount || 0, buzzOut: eventData.buzzOutCount || 0, totalBuzzers: eventData.buzzerCount || 0, notes: eventData.notes || '', submittedBy: eventData.submittedBy || '' };
+                const payload = { venue: eventData.venue, month: eventData.month, date: eventData.date, metThreeNew: eventData.scores.blue, oneToOnes: eventData.scores.red, broughtSomeone: eventData.scores.green, inRoom: parseFloat(eventData.inRoom) || 0, hostingTeam: eventData.team || '', buzzIn: eventData.buzzInCount || 0, buzzOut: eventData.buzzOutCount || 0, totalBuzzers: eventData.buzzerCount || 0, notes: eventData.notes || '', submittedBy: eventData.submittedBy || '' };
                 await fetch(SHEETS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             };
 
@@ -411,7 +411,7 @@
                             <div className="mb-6"><label className="block font-semibold mb-2">Notes</label><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 rounded-lg" rows="3"></textarea></div>
                             <div className="flex gap-4">
                                 <button onClick={() => finish(true)} className="flex-1 p-4 bg-gray-300 rounded-lg font-semibold">Later</button>
-                                <button onClick={() => finish(false)} className="flex-1 p-4 bg-green-600 text-white rounded-lg font-semibold">Save & Submit</button>
+                                <button onClick={() => finish(false)} className="flex-1 p-4 bg-green-600 text-white rounded-lg font-semibold">Save &amp; Submit</button>
                             </div>
                         </div>
                     </div>
