@@ -88,8 +88,8 @@
 
             const block = () => {
                 const t = new Date().getHours() * 100 + new Date().getMinutes();
-                if (t >= 0915 && t < 1100) return 'buzzing-in';
-                if (t >= 1101 && t <= 1230) return 'buzzing-out';
+                if (t >= 0900 && t < 1100) return 'buzzing-in';
+                if (t >= 1100 && t <= 1300) return 'buzzing-out';
                 return 'outside-hours';
             };
 
