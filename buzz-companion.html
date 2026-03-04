@@ -282,6 +282,27 @@ tr.noshow-row td:first-child{border-left:3px solid var(--pink)}
     </div>
   </div>
 
+  <!-- Sign off event -->
+  <div class="card" style="margin-bottom:14px;border:1px solid var(--border)">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Sign Off Event</span>
+      <span id="ed-signoff-status" style="font-size:12px;color:var(--teal)"></span>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">
+      Mark this event as finalised. Confirms the CSV import is complete and locks the attendance figures.
+      This updates the <strong>status</strong> column on the Events tab in Google Sheets.
+    </div>
+    <button class="sec-btn" style="border-color:var(--teal);color:var(--teal)" onclick="signOffEvent()">✓ Sign off &amp; finalise this event</button>
+  </div>
+
+  <!-- Persistent save/re-save controls -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+    <div style="font-size:12px;color:var(--muted)">Save or correct:</div>
+    <button class="sec-btn" style="font-size:12px" onclick="saveToSheet('ns')">💾 Save no-shows</button>
+    <button class="sec-btn" style="font-size:12px" onclick="saveToSheet('bn2b')">💾 Save BN2B flags</button>
+    <div style="font-size:11px;color:var(--muted);margin-left:4px">Run again any time to overwrite with current selections.</div>
+  </div>
+
   <!-- Summary KPIs (populated after data loads) -->
   <div class="ed-summary" id="ed-summary"></div>
 
@@ -563,6 +584,8 @@ let peopleFilter='all';
 let streakWindow=6;
 let notes={};
 let noShows=new Set();
+let _bn2bTimer=null;   // debounce timer for BN2B save prompt
+let _nsTimer=null;     // debounce timer for no-show save prompt
 let dnrWindow=3;
 let dnrCohort=6;
 let bn2b=new Set();    // person_ids flagged as BN2B this session
@@ -586,6 +609,17 @@ async function loadAll(){
     DB={events,attendance,people,plenty,tracker};
     destroyCharts();
     selectedIdx=DB.events.length-1;
+    // Pre-populate session Sets from sheet data
+    noShows=new Set();
+    bn2b=new Set();
+    const curEvDate=(DB.events[selectedIdx]?.date||'').split('T')[0];
+    DB.attendance.forEach(a=>{
+      const aDate=String(a.date||'').split('T')[0];
+      if(aDate===curEvDate){
+        if(String(a.attended).toLowerCase()==='no') noShows.add(String(a.person_id).trim());
+        if(String(a.bn2b)==='1'||String(a.bn2b).toLowerCase()==='true') bn2b.add(String(a.person_id).trim());
+      }
+    });
     render();
     document.getElementById('loading').style.display='none';
   }catch(e){
@@ -676,6 +710,17 @@ function stepEvent(dir){
   const max=DB.events.length-1;
   if(selectedIdx===-1) selectedIdx=max;
   selectedIdx=Math.max(0,Math.min(max,selectedIdx+dir));
+  // Re-populate session Sets for newly selected event
+  noShows=new Set();
+  bn2b=new Set();
+  const stepEvDate=(DB.events[selectedIdx]?.date||'').split('T')[0];
+  DB.attendance.forEach(a=>{
+    const aDate=String(a.date||'').split('T')[0];
+    if(aDate===stepEvDate){
+      if(String(a.attended).toLowerCase()==='no') noShows.add(String(a.person_id).trim());
+      if(String(a.bn2b)==='1'||String(a.bn2b).toLowerCase()==='true') bn2b.add(String(a.person_id).trim());
+    }
+  });
   // Update header
   const ev=DB.events[selectedIdx];
   const evLabel=ev?.date?fmtMonthYear(ev.date):(ev?.label||'—');
@@ -894,6 +939,71 @@ function toggleNoShow(pid){
   if(noShows.has(pid)) noShows.delete(pid);
   else noShows.add(pid);
   renderEventDay(DB.events);
+  // Debounced save prompt
+  clearTimeout(_nsTimer);
+  dismissSavePrompt('ns');
+  _nsTimer=setTimeout(()=>showSavePrompt('ns'),4000);
+}
+
+function showSavePrompt(type){
+  const existing=document.getElementById('save-prompt-'+type);
+  if(existing) return;
+  const label=type==='ns'?'no-shows':'BN2B flags';
+  const div=document.createElement('div');
+  div.id='save-prompt-'+type;
+  div.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:14px 20px;border-radius:10px;z-index:999;font-size:13px;box-shadow:0 4px 20px rgba(0,0,0,0.25);display:flex;gap:12px;align-items:center;max-width:90vw';
+  div.innerHTML=`<span>Done tapping ${label}?</span>
+    <button onclick="saveToSheet('${type}')" style="background:var(--teal);color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Save all</button>
+    <button onclick="dismissSavePrompt('${type}')" style="background:transparent;color:#ccc;border:1px solid #666;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px">Still tapping</button>`;
+  document.body.appendChild(div);
+}
+
+function dismissSavePrompt(type){
+  const el=document.getElementById('save-prompt-'+type);
+  if(el) el.remove();
+}
+
+async function saveToSheet(type){
+  dismissSavePrompt(type);
+  const ev=DB.events[selectedIdx]||DB.events[DB.events.length-1];
+  const evDate=ev?.date||'';
+  const statusKey=type==='ns'?'ed-signoff-status':'ed-signoff-status';
+
+  if(type==='ns'){
+    // Build attended map: no-shows = 'no', everyone else booked = 'yes'
+    const bookedRows=DB.attendance.filter(a=>String(a.date||'').split('T')[0]===evDate.split('T')[0]);
+    const attended=bookedRows.map(a=>({
+      person_id:String(a.person_id).trim(),
+      attended:noShows.has(String(a.person_id).trim())?'no':'yes'
+    }));
+    await fetch(SCRIPT_URL,{
+      method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({type:'save_attended',key:SCRIPT_KEY,event_date:evDate,attended})
+    });
+    showToast('No-shows saved to sheet ✓');
+  } else if(type==='bn2b'){
+    // Save all bn2b flags for this event
+    const bookedRows=DB.attendance.filter(a=>String(a.date||'').split('T')[0]===evDate.split('T')[0]);
+    const flags=bookedRows.map(a=>({
+      person_id:String(a.person_id).trim(),
+      value:bn2b.has(String(a.person_id).trim())?1:0
+    }));
+    await fetch(SCRIPT_URL,{
+      method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({type:'save_bn2b_batch',key:SCRIPT_KEY,event_date:evDate,flags})
+    });
+    showToast('BN2B flags saved to sheet ✓');
+  }
+}
+
+function showToast(msg){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--teal);color:#fff;padding:10px 20px;border-radius:8px;z-index:1000;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,0.2)';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
 }
 
 function toggleBn2b(pid,e){
@@ -901,12 +1011,12 @@ function toggleBn2b(pid,e){
   pid=String(pid).trim();
   if(bn2b.has(pid)) bn2b.delete(pid);
   else bn2b.add(pid);
-  // Write to sheet
-  const evDate=DB.events[selectedIdx]?.date||'';
-  fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',
-    body:JSON.stringify({type:'bn2b',key:SCRIPT_KEY,person_id:pid,event_date:evDate,value:bn2b.has(pid)?1:0})});
   renderEventDay(DB.events);
   renderFirstTimers(DB.events);
+  // Debounced save prompt
+  clearTimeout(_bn2bTimer);
+  dismissSavePrompt('bn2b');
+  _bn2bTimer=setTimeout(()=>showSavePrompt('bn2b'),4000);
 }
 
 function renderNoShows(allBooked,eventDate){
@@ -1657,31 +1767,70 @@ function renderDnr(events){
 }
 
 
+// ─── SIGN OFF EVENT ──────────────────────────────────────────────
+async function signOffEvent(){
+  const ev=DB.events[selectedIdx]||DB.events[DB.events.length-1];
+  if(!ev){alert('No event selected.');return;}
+  const label=ev.date?fmtDateLong(ev.date):(ev.label||ev.event_id);
+  const confirmed=confirm(`Sign off ${label} as finalised?\n\nThis marks the attendance data as complete and locks the event in Google Sheets.\n\nAre you sure?`);
+  if(!confirmed) return;
+  const statusEl=document.getElementById('ed-signoff-status');
+  statusEl.textContent='Saving…';
+  try{
+    await fetch(SCRIPT_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({type:'signoff',key:SCRIPT_KEY,event_id:ev.event_id,event_date:ev.date})
+    });
+    statusEl.textContent='✓ Event signed off — '+label;
+    statusEl.style.color='var(--teal)';
+  }catch(err){
+    statusEl.textContent='⚠ Could not save — check sheet manually';
+    statusEl.style.color='var(--pink)';
+  }
+}
+
 // ─── EVENT DAY EXPORTS ────────────────────────────────────────────
 function exportEdCsv(listType, bn2bOnly){
   const ev=DB.events[selectedIdx]||DB.events[DB.events.length-1];
   const evDate=ev?.date||'';
   const evLabel=ev?.date?fmtMonthShort(ev.date):(ev?.label||'event');
 
+  // Normalise a date value to yyyy-MM-dd string
+  function normDate(d){
+    if(!d) return '';
+    if(d instanceof Date) return d.toISOString().split('T')[0];
+    return String(d).split('T')[0];
+  }
+
   let people=[];
   if(listType==='new'){
-    // Get booked people for this event who are first-timers
-    const booked=DB.attendance.filter(a=>{
-      let d=a.date;
-      if(d instanceof Date) d=d.toISOString().split('T')[0];
-      else d=String(d).split('T')[0];
-      return d===evDate;
-    });
-    booked.forEach(a=>{
+    // Get attendance rows for this event date
+    const bookedRows=DB.attendance.filter(a=>normDate(a.date)===evDate);
+    bookedRows.forEach(a=>{
       const p=DB.people.find(pp=>String(pp.person_id)===String(a.person_id));
       if(!p) return;
-      const dates=personDates(p.person_id);
-      const isNew=dates.length<=1||(dates.length>0&&dates[0]===evDate);
+      // First-timer = all their attendance dates, earliest is this event
+      const allDates=DB.attendance
+        .filter(r=>String(r.person_id)===String(p.person_id))
+        .map(r=>normDate(r.date))
+        .filter(Boolean)
+        .sort();
+      const isNew=allDates.length===0||allDates[0]===evDate;
       const isBn2b=bn2b.has(String(p.person_id));
       if(bn2bOnly&&!isBn2b) return;
       if(!bn2bOnly&&!isNew) return;
       people.push({...p, is_bn2b:isBn2b?'yes':''});
     });
+    // If no attendance rows yet (pre-import), fall back to ed-list-new DOM
+    if(!people.length){
+      document.querySelectorAll('#ed-list-new .person-row').forEach(row=>{
+        const pid=row.dataset.pid;
+        const p=DB.people.find(pp=>String(pp.person_id)===String(pid));
+        if(p) people.push({...p, is_bn2b:bn2b.has(String(p.person_id))?'yes':''});
+      });
+    }
   } else if(listType==='noshow'){
     noShows.forEach(pid=>{
       const p=DB.people.find(pp=>String(pp.person_id)===String(pid));
