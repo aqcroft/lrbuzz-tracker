@@ -1,0 +1,1518 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buzz Host Companion — Design Concepts</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&family=Fraunces:ital,wght@0,300;0,600;1,300&family=Cabinet+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0e0e0e; font-family: 'DM Sans', sans-serif; color: #fff; }
+
+/* ── INTRO ── */
+.intro {
+  padding: 80px 40px 60px;
+  text-align: center;
+  border-bottom: 1px solid #222;
+}
+.intro-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: #666;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.intro h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 400;
+  color: #fff;
+  line-height: 1.15;
+  margin-bottom: 16px;
+}
+.intro p {
+  font-size: 16px;
+  color: #888;
+  max-width: 560px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+/* ── CONCEPT HEADER ── */
+.concept-header {
+  padding: 60px 40px 0;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.concept-number {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: #555;
+  letter-spacing: 3px;
+  margin-bottom: 8px;
+}
+.concept-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.concept-desc {
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 32px;
+  line-height: 1.6;
+  max-width: 600px;
+}
+.concept-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-right: 6px;
+  margin-bottom: 20px;
+}
+
+/* ── DEVICE FRAME ── */
+.device-row {
+  display: flex;
+  gap: 32px;
+  padding: 0 40px 80px;
+  max-width: 1400px;
+  margin: 0 auto;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.device-wrap {
+  flex: 1;
+  min-width: 280px;
+}
+.device-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: #444;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.phone-frame {
+  width: 100%;
+  max-width: 340px;
+  border-radius: 36px;
+  overflow: hidden;
+  border: 2px solid #2a2a2a;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.04);
+  position: relative;
+}
+.desktop-frame {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid #2a2a2a;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+}
+.frame-bar {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 6px;
+}
+.frame-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.divider {
+  border: none;
+  border-top: 1px solid #1a1a1a;
+  margin: 0 40px;
+}
+
+/* ════════════════════════════════════════
+   CONCEPT 1 — FIELD OPERATIONS
+   Dark tactical, high-contrast, utility-first
+   ════════════════════════════════════════ */
+.c1 {
+  --bg: #0a0a0a;
+  --surface: #111;
+  --surface2: #181818;
+  --border: #222;
+  --accent: #00e5cc;
+  --accent2: #ff3d5a;
+  --accent3: #f5a623;
+  --text: #f0f0f0;
+  --muted: #555;
+  --green: #00c47a;
+  font-family: 'Space Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.c1-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--accent);
+  padding: 14px 16px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.c1-logo {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.c1-event-date {
+  font-size: 18px;
+  font-family: 'DM Serif Display', serif;
+  color: var(--text);
+  margin-top: 2px;
+}
+.c1-badge {
+  background: var(--accent);
+  color: #000;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+.c1-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  overflow-x: auto;
+}
+.c1-tab {
+  padding: 10px 14px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.c1-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.c1-body { padding: 14px; background: var(--bg); }
+.c1-section-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.c1-section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.c1-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.c1-kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 10px 8px;
+  text-align: center;
+}
+.c1-kpi-val {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.c1-kpi-label { font-size: 8px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+.c1-person-list { display: flex; flex-direction: column; gap: 2px; }
+.c1-person {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.c1-person-name { font-size: 12px; color: var(--text); }
+.c1-person-co { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.c1-tag-new {
+  font-size: 8px;
+  padding: 2px 6px;
+  background: rgba(0,229,204,0.1);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+.c1-tag-bn2b {
+  font-size: 8px;
+  padding: 2px 6px;
+  background: rgba(255,61,90,0.1);
+  border: 1px solid var(--accent2);
+  color: var(--accent2);
+  letter-spacing: 1px;
+  margin-left: 4px;
+}
+.c1-stat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.c1-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-left: 3px solid var(--accent);
+}
+.c1-stat-val { font-size: 28px; font-weight: 700; color: var(--text); }
+.c1-stat-label { font-size: 9px; color: var(--muted); letter-spacing: 1px; margin-top: 2px; text-transform: uppercase; }
+.c1-progress-bar {
+  background: var(--surface2);
+  height: 4px;
+  border-radius: 0;
+  margin-top: 8px;
+}
+.c1-progress-fill {
+  height: 4px;
+  background: var(--accent);
+}
+.c1-action-btn {
+  width: 100%;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  padding: 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 14px;
+}
+.c1-import-zone {
+  border: 1px dashed var(--accent);
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 12px;
+  background: rgba(0,229,204,0.03);
+}
+.c1-import-icon { font-size: 24px; margin-bottom: 8px; }
+.c1-import-label { font-size: 9px; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
+.c1-import-sub { font-size: 9px; color: var(--muted); margin-top: 4px; }
+
+/* DESKTOP C1 */
+.c1-desktop-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr 1fr;
+  min-height: 420px;
+  background: var(--bg);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--text);
+}
+.c1-sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+.c1-sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--accent);
+}
+.c1-sidebar-logo { font-size: 9px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; }
+.c1-sidebar-date { font-family: 'DM Serif Display', serif; font-size: 16px; color: var(--text); margin-top: 4px; }
+.c1-nav-item {
+  padding: 12px 16px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+}
+.c1-nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(0,229,204,0.05); }
+.c1-main { padding: 20px; border-right: 1px solid var(--border); }
+.c1-panel { padding: 20px; }
+.c1-kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.c1-streak-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.c1-streak-name { font-size: 11px; flex: 1; }
+.c1-dot { width: 8px; height: 8px; border-radius: 1px; background: var(--border); }
+.c1-dot.on { background: var(--accent); }
+.c1-dot.dim { background: rgba(0,229,204,0.3); }
+
+/* ════════════════════════════════════════
+   CONCEPT 2 — WARM EDITORIAL
+   Light, typographic, magazine-feel
+   ════════════════════════════════════════ */
+.c2 {
+  --bg: #faf7f2;
+  --surface: #fff;
+  --surface2: #f5f0e8;
+  --border: #e8e0d0;
+  --accent: #c45c2a;
+  --accent2: #2a6b4a;
+  --text: #1a1410;
+  --muted: #9a8f80;
+  --teal: #1a8a7a;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+.c2-header {
+  background: var(--surface);
+  border-bottom: 2px solid var(--text);
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.c2-logo {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+.c2-logo span { font-style: italic; font-weight: 300; }
+.c2-date-badge {
+  background: var(--text);
+  color: var(--bg);
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.c2-tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.c2-tab {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  position: relative;
+}
+.c2-tab.active {
+  color: var(--accent);
+}
+.c2-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+}
+.c2-body { padding: 16px; background: var(--bg); }
+.c2-section {
+  font-family: 'Fraunces', serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.c2-hero-stat {
+  background: var(--text);
+  color: var(--bg);
+  padding: 20px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.c2-hero-num {
+  font-family: 'DM Serif Display', serif;
+  font-size: 64px;
+  line-height: 1;
+  color: var(--bg);
+}
+.c2-hero-label {
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.c2-hero-sub { font-size: 11px; color: rgba(255,255,255,0.4); }
+.c2-kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.c2-kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 12px;
+}
+.c2-kpi-val {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px;
+  color: var(--accent);
+  line-height: 1;
+}
+.c2-kpi-label { font-size: 10px; color: var(--muted); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.c2-person-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 12px;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.c2-person-name {
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.c2-person-co { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.c2-pill-new {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  background: #fef3ee;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.c2-pill-bn2b {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  background: #eef5f1;
+  border: 1px solid var(--accent2);
+  color: var(--accent2);
+  text-transform: uppercase;
+  margin-left: 4px;
+}
+.c2-action {
+  width: 100%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 14px;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 14px;
+  letter-spacing: 0.5px;
+}
+.c2-import {
+  border: 2px dashed var(--border);
+  padding: 24px;
+  text-align: center;
+  background: var(--surface);
+  margin-bottom: 12px;
+}
+.c2-import-icon { font-size: 28px; margin-bottom: 8px; }
+.c2-import-label { font-family: 'Fraunces', serif; font-size: 15px; color: var(--text); margin-bottom: 4px; }
+.c2-import-sub { font-size: 11px; color: var(--muted); }
+.c2-chart-area {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 16px;
+  margin-bottom: 10px;
+}
+.c2-chart-label { font-size: 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+.c2-bars { display: flex; align-items: flex-end; gap: 4px; height: 60px; }
+.c2-bar { flex: 1; background: var(--border); border-radius: 2px 2px 0 0; }
+.c2-bar.hi { background: var(--accent); }
+.c2-bar.mid { background: #e8a080; }
+
+/* DESKTOP C2 */
+.c2-desktop {
+  background: var(--bg);
+  font-family: 'Cabinet Grotesk', sans-serif;
+  color: var(--text);
+  min-height: 420px;
+}
+.c2-desktop-header {
+  background: var(--text);
+  padding: 14px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.c2-desktop-logo {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  color: var(--bg);
+  font-style: italic;
+  font-weight: 300;
+}
+.c2-desktop-logo strong { font-style: normal; font-weight: 600; margin-right: 6px; }
+.c2-desktop-date { font-size: 12px; color: rgba(255,255,255,0.5); }
+.c2-desktop-nav {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  padding: 0 24px;
+}
+.c2-desktop-tab {
+  padding: 12px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+}
+.c2-desktop-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.c2-desktop-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  padding: 24px;
+  gap: 16px;
+}
+.c2-desktop-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 18px;
+}
+.c2-desktop-card-title {
+  font-family: 'Fraunces', serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.c2-big-num {
+  font-family: 'DM Serif Display', serif;
+  font-size: 52px;
+  color: var(--text);
+  line-height: 1;
+}
+.c2-big-label { font-size: 11px; color: var(--muted); margin-top: 6px; font-weight: 600; text-transform: uppercase; }
+.c2-person-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.c2-person-row:last-child { border-bottom: none; }
+
+/* ════════════════════════════════════════
+   CONCEPT 3 — KINETIC CARD
+   Bold, colourful, card-based, high energy
+   ════════════════════════════════════════ */
+.c3 {
+  --bg: #f2f0ff;
+  --teal: #00A19A;
+  --green: #B6BD00;
+  --orange: #F39200;
+  --pink: #D60B52;
+  --text: #0e0a1a;
+  --muted: #7a748a;
+  --surface: #fff;
+  --border: rgba(0,0,0,0.08);
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+.c3-header {
+  background: var(--teal);
+  padding: 18px 16px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.c3-logo { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: rgba(255,255,255,0.7); text-transform: uppercase; }
+.c3-date { font-size: 22px; font-weight: 800; color: #fff; margin-top: 2px; line-height: 1.1; }
+.c3-live-badge {
+  background: var(--pink);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+.c3-tabs {
+  background: var(--surface);
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.c3-tab {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+  border-bottom: 3px solid transparent;
+  letter-spacing: 0.5px;
+}
+.c3-tab.active { color: var(--teal); border-bottom-color: var(--teal); }
+.c3-body { padding: 14px; }
+.c3-card {
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.c3-card-accent-teal { border-left: 4px solid var(--teal); }
+.c3-card-accent-green { border-left: 4px solid var(--green); }
+.c3-card-accent-orange { border-left: 4px solid var(--orange); }
+.c3-card-accent-pink { border-left: 4px solid var(--pink); }
+.c3-card-title { font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.c3-stat-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
+.c3-stat {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+.c3-stat-val { font-size: 32px; font-weight: 800; color: var(--teal); line-height: 1; }
+.c3-stat-label { font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.c3-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.c3-person:last-child { border-bottom: none; }
+.c3-avatar {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.c3-person-info { flex: 1; }
+.c3-person-name { font-size: 13px; font-weight: 700; }
+.c3-person-co { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.c3-chip {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+}
+.c3-chip-new { background: rgba(0,161,154,0.12); color: var(--teal); }
+.c3-chip-bn2b { background: rgba(214,11,82,0.1); color: var(--pink); margin-left: 4px; }
+.c3-action-btn {
+  width: 100%;
+  background: var(--teal);
+  color: #fff;
+  border: none;
+  padding: 14px;
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+}
+.c3-progress {
+  background: rgba(0,0,0,0.06);
+  height: 8px;
+  border-radius: 4px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.c3-progress-fill { height: 8px; border-radius: 4px; background: var(--teal); }
+.c3-import-zone {
+  border: 2px dashed rgba(0,161,154,0.3);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(0,161,154,0.04);
+  margin-bottom: 12px;
+}
+.c3-import-icon { font-size: 32px; margin-bottom: 8px; }
+.c3-import-label { font-size: 14px; font-weight: 700; color: var(--teal); margin-bottom: 4px; }
+.c3-import-sub { font-size: 11px; color: var(--muted); }
+.c3-streak-dots { display: flex; gap: 3px; }
+.c3-sdot { width: 10px; height: 10px; border-radius: 3px; background: var(--border); }
+.c3-sdot.on { background: var(--teal); }
+.c3-sdot.dim { background: rgba(182,189,0,0.5); }
+.c3-streak-person {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+}
+.c3-streak-person:last-child { border-bottom: none; }
+
+/* DESKTOP C3 */
+.c3-desktop {
+  background: var(--bg);
+  font-family: 'Syne', sans-serif;
+  color: var(--text);
+  min-height: 420px;
+}
+.c3-desktop-header {
+  background: var(--teal);
+  padding: 14px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.c3-desktop-title { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: 1px; }
+.c3-desktop-date { font-size: 13px; color: rgba(255,255,255,0.7); font-weight: 600; }
+.c3-desktop-nav {
+  background: #fff;
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+}
+.c3-desktop-tab {
+  padding: 12px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+.c3-desktop-tab.active { color: var(--teal); border-bottom-color: var(--teal); }
+.c3-desktop-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  padding: 20px 24px;
+}
+.c3-desktop-card {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.05);
+}
+.c3-desktop-card-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.c3-big { font-size: 48px; font-weight: 800; color: var(--teal); line-height: 1; }
+.c3-big-label { font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 600; }
+.c3-mini-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.c3-mini-kpi { background: var(--bg); border-radius: 8px; padding: 10px; text-align: center; }
+.c3-mini-val { font-size: 20px; font-weight: 800; }
+.c3-mini-label { font-size: 9px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+/* ── COMPARISON FOOTER ── */
+.comparison {
+  padding: 60px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.comparison h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 32px;
+  font-weight: 400;
+  color: #fff;
+  margin-bottom: 32px;
+}
+.comp-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; }
+.comp-card {
+  border: 1px solid #222;
+  padding: 24px;
+  border-radius: 4px;
+}
+.comp-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
+.comp-row { display: flex; gap: 10px; margin-bottom: 10px; font-size: 13px; color: #aaa; }
+.comp-row::before { content: '→'; color: #555; flex-shrink: 0; }
+.comp-row.pro { color: #ccc; }
+.comp-row.pro::before { content: '✓'; color: #00e5cc; }
+
+@media (max-width: 900px) {
+  .device-row { flex-direction: column; }
+  .comp-grid { grid-template-columns: 1fr; }
+  .intro { padding: 40px 20px; }
+  .concept-header { padding: 40px 20px 0; }
+  .device-row { padding: 0 20px 60px; }
+  .comparison { padding: 40px 20px; }
+  .divider { margin: 0 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div class="intro">
+  <div class="intro-label">Design Exploration · MH Buzz Host Companion · 2026</div>
+  <h1>Three directions.<br>One decision.</h1>
+  <p>Each concept takes a distinct approach to the same tool. No functionality — just the feel, the hierarchy, and the character.</p>
+</div>
+
+<!-- ═══════════════════════════════════════
+     CONCEPT 1 — FIELD OPERATIONS
+     ═══════════════════════════════════════ -->
+<div class="concept-header">
+  <div class="concept-number">CONCEPT 01</div>
+  <div class="concept-title" style="color:#00e5cc">Field Operations</div>
+  <div>
+    <span class="concept-tag" style="background:rgba(0,229,204,0.1);color:#00e5cc;border:1px solid #00e5cc">Dark mode</span>
+    <span class="concept-tag" style="background:rgba(255,255,255,0.05);color:#888;border:1px solid #333">Monospace</span>
+    <span class="concept-tag" style="background:rgba(255,255,255,0.05);color:#888;border:1px solid #333">Tactical</span>
+  </div>
+  <div class="concept-desc">Built like a control room. Monospace type, high contrast, zero decoration. Every pixel earns its place. Feels like you're running an operation, not filling in a form.</div>
+</div>
+<div class="device-row">
+
+  <!-- PHONE -->
+  <div class="device-wrap">
+    <div class="device-label">Mobile · Event Day</div>
+    <div class="phone-frame">
+      <div class="c1">
+        <div class="c1-header">
+          <div>
+            <div class="c1-logo">MH Buzz · Host</div>
+            <div class="c1-event-date">4 Mar 2026</div>
+          </div>
+          <div class="c1-badge">LIVE</div>
+        </div>
+        <div class="c1-tabs">
+          <div class="c1-tab active">Today</div>
+          <div class="c1-tab">Insights</div>
+          <div class="c1-tab">People</div>
+          <div class="c1-tab">Settings</div>
+        </div>
+        <div class="c1-body">
+          <div class="c1-section-label">Attendance</div>
+          <div class="c1-kpi-row">
+            <div class="c1-kpi"><div class="c1-kpi-val">47</div><div class="c1-kpi-label">Room</div></div>
+            <div class="c1-kpi"><div class="c1-kpi-val" style="color:#ff3d5a">8</div><div class="c1-kpi-label">New</div></div>
+            <div class="c1-kpi"><div class="c1-kpi-val" style="color:#f5a623">3</div><div class="c1-kpi-label">BN2B</div></div>
+            <div class="c1-kpi"><div class="c1-kpi-val" style="color:#555">4</div><div class="c1-kpi-label">No-show</div></div>
+          </div>
+          <div class="c1-section-label">New This Month</div>
+          <div class="c1-person-list">
+            <div class="c1-person">
+              <div>
+                <div class="c1-person-name">Sarah Jennings</div>
+                <div class="c1-person-co">Peak Digital</div>
+              </div>
+              <div><span class="c1-tag-new">NEW</span><span class="c1-tag-bn2b">BN2B</span></div>
+            </div>
+            <div class="c1-person">
+              <div>
+                <div class="c1-person-name">Tom Aldridge</div>
+                <div class="c1-person-co">Aldridge Law</div>
+              </div>
+              <span class="c1-tag-new">NEW</span>
+            </div>
+            <div class="c1-person">
+              <div>
+                <div class="c1-person-name">Claire Booth</div>
+                <div class="c1-person-co">CB Bookkeeping</div>
+              </div>
+              <span class="c1-tag-new">NEW</span>
+            </div>
+          </div>
+          <button class="c1-action-btn">⬇ Import CSV</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHONE 2 — INSIGHTS -->
+  <div class="device-wrap">
+    <div class="device-label">Mobile · Insights</div>
+    <div class="phone-frame">
+      <div class="c1">
+        <div class="c1-header">
+          <div>
+            <div class="c1-logo">MH Buzz · Host</div>
+            <div class="c1-event-date">Feb 2026</div>
+          </div>
+          <div style="text-align:right">
+            <span style="font-size:10px;color:#555">← Mar →</span>
+          </div>
+        </div>
+        <div class="c1-tabs">
+          <div class="c1-tab">Today</div>
+          <div class="c1-tab active">Insights</div>
+          <div class="c1-tab">People</div>
+          <div class="c1-tab">Settings</div>
+        </div>
+        <div class="c1-body">
+          <div class="c1-section-label">Event Health</div>
+          <div class="c1-stat-row">
+            <div class="c1-stat">
+              <div class="c1-stat-val" style="color:#00e5cc">78</div>
+              <div class="c1-stat-label">Health Score</div>
+              <div style="font-size:9px;color:#00c47a;margin-top:4px">HEALTHY ↑</div>
+            </div>
+            <div class="c1-stat" style="border-left-color:#f5a623">
+              <div class="c1-stat-val">52</div>
+              <div class="c1-stat-label">Booked</div>
+              <div class="c1-progress-bar"><div class="c1-progress-fill" style="width:78%"></div></div>
+            </div>
+          </div>
+          <div class="c1-section-label">Hot Streaks</div>
+          <div class="c1-person-list">
+            <div class="c1-person">
+              <div>
+                <div class="c1-person-name">Adrian Croft</div>
+                <div style="display:flex;gap:3px;margin-top:4px">
+                  <div class="c1-dot on"></div><div class="c1-dot on"></div><div class="c1-dot on"></div>
+                  <div class="c1-dot on"></div><div class="c1-dot on"></div><div class="c1-dot dim"></div>
+                </div>
+              </div>
+              <span style="color:#00e5cc;font-size:10px">5/6</span>
+            </div>
+            <div class="c1-person">
+              <div>
+                <div class="c1-person-name">Lisa Patel</div>
+                <div style="display:flex;gap:3px;margin-top:4px">
+                  <div class="c1-dot on"></div><div class="c1-dot on"></div><div class="c1-dot on"></div>
+                  <div class="c1-dot on"></div><div class="c1-dot"></div><div class="c1-dot dim"></div>
+                </div>
+              </div>
+              <span style="color:#00e5cc;font-size:10px">4/6</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESKTOP -->
+  <div class="device-wrap" style="flex:2;min-width:400px">
+    <div class="device-label">Desktop · Insights Overview</div>
+    <div class="desktop-frame">
+      <div class="frame-bar" style="background:#111">
+        <div class="frame-dot" style="background:#ff5f56"></div>
+        <div class="frame-dot" style="background:#ffbd2e"></div>
+        <div class="frame-dot" style="background:#27c93f"></div>
+      </div>
+      <div class="c1-desktop-layout">
+        <div class="c1-sidebar">
+          <div class="c1-sidebar-header">
+            <div class="c1-sidebar-logo">MH Buzz</div>
+            <div class="c1-sidebar-date">4 Mar 2026</div>
+          </div>
+          <div class="c1-nav-item active">Today</div>
+          <div class="c1-nav-item">Insights</div>
+          <div class="c1-nav-item">Loyalty</div>
+          <div class="c1-nav-item">People</div>
+          <div class="c1-nav-item">Settings</div>
+          <div style="flex:1"></div>
+          <div style="padding:16px;border-top:1px solid #222">
+            <div style="font-size:8px;color:#333;letter-spacing:2px">EVENT STATUS</div>
+            <div style="font-size:10px;color:#00e5cc;margin-top:4px">▶ LIVE</div>
+          </div>
+        </div>
+        <div class="c1-main">
+          <div class="c1-section-label" style="margin-bottom:12px">Attendance Summary</div>
+          <div class="c1-kpi-grid">
+            <div class="c1-kpi"><div class="c1-kpi-val">47</div><div class="c1-kpi-label">In Room</div></div>
+            <div class="c1-kpi"><div class="c1-kpi-val" style="color:#ff3d5a">8</div><div class="c1-kpi-label">First-Timers</div></div>
+            <div class="c1-kpi"><div class="c1-kpi-val" style="color:#f5a623">3</div><div class="c1-kpi-label">BN2B</div></div>
+            <div class="c1-kpi"><div class="c1-kpi-val" style="color:#555">4</div><div class="c1-kpi-label">No-Shows</div></div>
+          </div>
+          <div class="c1-section-label">New This Month</div>
+          <div class="c1-person-list">
+            <div class="c1-person"><div><div class="c1-person-name">Sarah Jennings</div><div class="c1-person-co">Peak Digital</div></div><div><span class="c1-tag-new">NEW</span><span class="c1-tag-bn2b">BN2B</span></div></div>
+            <div class="c1-person"><div><div class="c1-person-name">Tom Aldridge</div><div class="c1-person-co">Aldridge Law</div></div><span class="c1-tag-new">NEW</span></div>
+            <div class="c1-person"><div><div class="c1-person-name">Claire Booth</div><div class="c1-person-co">CB Bookkeeping</div></div><span class="c1-tag-new">NEW</span></div>
+          </div>
+        </div>
+        <div class="c1-panel">
+          <div class="c1-section-label">Hot Streaks</div>
+          <div class="c1-streak-row"><span class="c1-streak-name">Adrian Croft</span><div class="c1-dot on"></div><div class="c1-dot on"></div><div class="c1-dot on"></div><div class="c1-dot on"></div><div class="c1-dot on"></div><div class="c1-dot dim"></div><span style="color:#00e5cc;font-size:10px;margin-left:4px">5/6</span></div>
+          <div class="c1-streak-row"><span class="c1-streak-name">Lisa Patel</span><div class="c1-dot on"></div><div class="c1-dot on"></div><div class="c1-dot on"></div><div class="c1-dot on"></div><div class="c1-dot"></div><div class="c1-dot dim"></div><span style="color:#00e5cc;font-size:10px;margin-left:4px">4/6</span></div>
+          <div class="c1-streak-row"><span class="c1-streak-name">Marcus Webb</span><div class="c1-dot on"></div><div class="c1-dot on"></div><div class="c1-dot on"></div><div class="c1-dot"></div><div class="c1-dot dim"></div><div class="c1-dot dim"></div><span style="color:#00e5cc;font-size:10px;margin-left:4px">3/6</span></div>
+          <div style="margin-top:16px">
+            <div class="c1-section-label">321 Tracker</div>
+            <div class="c1-stat-row">
+              <div class="c1-stat"><div class="c1-stat-val" style="font-size:20px">34</div><div class="c1-stat-label">Met 3 New</div></div>
+              <div class="c1-stat" style="border-left-color:#f5a623"><div class="c1-stat-val" style="font-size:20px">28</div><div class="c1-stat-label">Set 1-2-1s</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════
+     CONCEPT 2 — WARM EDITORIAL
+     ═══════════════════════════════════════ -->
+<div class="concept-header">
+  <div class="concept-number">CONCEPT 02</div>
+  <div class="concept-title" style="color:#c45c2a">Warm Editorial</div>
+  <div>
+    <span class="concept-tag" style="background:#fef3ee;color:#c45c2a;border:1px solid #e8a080">Light mode</span>
+    <span class="concept-tag" style="background:#f5f0e8;color:#9a8f80;border:1px solid #e0d8c8">Serif type</span>
+    <span class="concept-tag" style="background:#f5f0e8;color:#9a8f80;border:1px solid #e0d8c8">Editorial</span>
+  </div>
+  <div class="concept-desc">Feels like a quality printed report, but alive. Serif headlines, warm paper tones, generous whitespace. Calm and authoritative — the tool of someone who knows what they're doing.</div>
+</div>
+<div class="device-row">
+
+  <!-- PHONE -->
+  <div class="device-wrap">
+    <div class="device-label">Mobile · Event Day</div>
+    <div class="phone-frame">
+      <div class="c2">
+        <div class="c2-header">
+          <div>
+            <div class="c2-logo">MH Buzz <span>Host</span></div>
+          </div>
+          <div class="c2-date-badge">4 MAR 2026</div>
+        </div>
+        <div class="c2-tabs">
+          <div class="c2-tab active">Today</div>
+          <div class="c2-tab">Insights</div>
+          <div class="c2-tab">People</div>
+          <div class="c2-tab">Settings</div>
+        </div>
+        <div class="c2-body">
+          <div class="c2-import">
+            <div class="c2-import-icon">📂</div>
+            <div class="c2-import-label">Import booking CSV</div>
+            <div class="c2-import-sub">Tap to upload · re-run any time</div>
+          </div>
+          <div class="c2-kpi-row">
+            <div class="c2-kpi"><div class="c2-kpi-val">47</div><div class="c2-kpi-label">In Room</div></div>
+            <div class="c2-kpi"><div class="c2-kpi-val" style="color:#c45c2a">8</div><div class="c2-kpi-label">New</div></div>
+            <div class="c2-kpi"><div class="c2-kpi-val" style="color:#2a6b4a">3</div><div class="c2-kpi-label">BN2B</div></div>
+          </div>
+          <div class="c2-section">New This Month</div>
+          <div class="c2-person-card">
+            <div><div class="c2-person-name">Sarah Jennings</div><div class="c2-person-co">Peak Digital</div></div>
+            <div><span class="c2-pill-new">New</span><span class="c2-pill-bn2b">BN2B</span></div>
+          </div>
+          <div class="c2-person-card">
+            <div><div class="c2-person-name">Tom Aldridge</div><div class="c2-person-co">Aldridge Law</div></div>
+            <span class="c2-pill-new">New</span>
+          </div>
+          <div class="c2-person-card">
+            <div><div class="c2-person-name">Claire Booth</div><div class="c2-person-co">CB Bookkeeping</div></div>
+            <span class="c2-pill-new">New</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHONE 2 -->
+  <div class="device-wrap">
+    <div class="device-label">Mobile · Insights</div>
+    <div class="phone-frame">
+      <div class="c2">
+        <div class="c2-header">
+          <div class="c2-logo">MH Buzz <span>Host</span></div>
+          <div class="c2-date-badge">FEB 2026</div>
+        </div>
+        <div class="c2-tabs">
+          <div class="c2-tab">Today</div>
+          <div class="c2-tab active">Insights</div>
+          <div class="c2-tab">People</div>
+          <div class="c2-tab">Settings</div>
+        </div>
+        <div class="c2-body">
+          <div class="c2-hero-stat">
+            <div>
+              <div class="c2-hero-label">In the Room</div>
+              <div class="c2-hero-num">52</div>
+              <div class="c2-hero-sub">↑ 4 on last month</div>
+            </div>
+            <div style="text-align:right">
+              <div class="c2-hero-label">Health</div>
+              <div style="font-family:'DM Serif Display',serif;font-size:32px;color:#fff">78</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.4)">Healthy</div>
+            </div>
+          </div>
+          <div class="c2-chart-area">
+            <div class="c2-chart-label">Attendance · Last 8 Months</div>
+            <div class="c2-bars">
+              <div class="c2-bar" style="height:55%"></div>
+              <div class="c2-bar" style="height:62%"></div>
+              <div class="c2-bar" style="height:70%"></div>
+              <div class="c2-bar mid" style="height:50%"></div>
+              <div class="c2-bar" style="height:75%"></div>
+              <div class="c2-bar" style="height:80%"></div>
+              <div class="c2-bar" style="height:72%"></div>
+              <div class="c2-bar hi" style="height:88%"></div>
+            </div>
+          </div>
+          <div class="c2-section">Booking Tracker</div>
+          <div class="c2-kpi-row">
+            <div class="c2-kpi"><div class="c2-kpi-val">38</div><div class="c2-kpi-label">Booked</div></div>
+            <div class="c2-kpi"><div class="c2-kpi-val" style="color:#c45c2a">6</div><div class="c2-kpi-label">New</div></div>
+            <div class="c2-kpi"><div class="c2-kpi-val" style="color:#2a6b4a">32</div><div class="c2-kpi-label">Return</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESKTOP -->
+  <div class="device-wrap" style="flex:2;min-width:400px">
+    <div class="device-label">Desktop · Insights</div>
+    <div class="desktop-frame">
+      <div class="frame-bar" style="background:#e8e0d0">
+        <div class="frame-dot" style="background:#ff5f56"></div>
+        <div class="frame-dot" style="background:#ffbd2e"></div>
+        <div class="frame-dot" style="background:#27c93f"></div>
+      </div>
+      <div class="c2-desktop">
+        <div class="c2-desktop-header">
+          <div class="c2-desktop-logo"><strong>MH Buzz</strong> Host Companion</div>
+          <div class="c2-desktop-date">4th March 2026 · ← Feb · Mar →</div>
+        </div>
+        <div class="c2-desktop-nav">
+          <div class="c2-desktop-tab active">Today</div>
+          <div class="c2-desktop-tab">Insights</div>
+          <div class="c2-desktop-tab">Loyalty</div>
+          <div class="c2-desktop-tab">People</div>
+          <div class="c2-desktop-tab">Settings</div>
+        </div>
+        <div class="c2-desktop-body">
+          <div class="c2-desktop-card">
+            <div class="c2-desktop-card-title">Attendance</div>
+            <div class="c2-big">52</div>
+            <div class="c2-big-label">In the Room</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+              <div class="c2-kpi" style="border:1px solid #e8e0d0"><div class="c2-kpi-val" style="font-size:20px;color:#c45c2a">8</div><div class="c2-kpi-label">New</div></div>
+              <div class="c2-kpi" style="border:1px solid #e8e0d0"><div class="c2-kpi-val" style="font-size:20px">4</div><div class="c2-kpi-label">No-Show</div></div>
+            </div>
+          </div>
+          <div class="c2-desktop-card">
+            <div class="c2-desktop-card-title">New This Month</div>
+            <div class="c2-person-row"><span style="font-weight:600">Sarah Jennings</span><span style="font-size:11px;color:#9a8f80">Peak Digital</span></div>
+            <div class="c2-person-row"><span style="font-weight:600">Tom Aldridge</span><span style="font-size:11px;color:#9a8f80">Aldridge Law</span></div>
+            <div class="c2-person-row"><span style="font-weight:600">Claire Booth</span><span style="font-size:11px;color:#9a8f80">CB Bookkeeping</span></div>
+            <div class="c2-person-row"><span style="font-weight:600">Marcus Webb</span><span style="font-size:11px;color:#9a8f80">Webb Financial</span></div>
+            <div class="c2-person-row"><span style="font-weight:600">Priya Sharma</span><span style="font-size:11px;color:#9a8f80">Sharma HR</span></div>
+          </div>
+          <div class="c2-desktop-card">
+            <div class="c2-desktop-card-title">321 Tracker</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div class="c2-kpi" style="border:1px solid #e8e0d0"><div class="c2-kpi-val" style="font-size:18px">34</div><div class="c2-kpi-label">Met 3</div></div>
+              <div class="c2-kpi" style="border:1px solid #e8e0d0"><div class="c2-kpi-val" style="font-size:18px">28</div><div class="c2-kpi-label">1-2-1s</div></div>
+              <div class="c2-kpi" style="border:1px solid #e8e0d0"><div class="c2-kpi-val" style="font-size:18px">19</div><div class="c2-kpi-label">Brought 1</div></div>
+              <div class="c2-kpi" style="border:1px solid #e8e0d0"><div class="c2-kpi-val" style="font-size:18px;color:#c45c2a">72%</div><div class="c2-kpi-label">Engagement</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<hr class="divider">
+
+<!-- ═══════════════════════════════════════
+     CONCEPT 3 — KINETIC CARD
+     ═══════════════════════════════════════ -->
+<div class="concept-header">
+  <div class="concept-number">CONCEPT 03</div>
+  <div class="concept-title" style="color:#00A19A">Kinetic Card</div>
+  <div>
+    <span class="concept-tag" style="background:rgba(0,161,154,0.1);color:#00A19A;border:1px solid #00A19A">Light mode</span>
+    <span class="concept-tag" style="background:#f2f0ff;color:#7a748a;border:1px solid #d0cce8">Card-based</span>
+    <span class="concept-tag" style="background:#f2f0ff;color:#7a748a;border:1px solid #d0cce8">Familiar</span>
+  </div>
+  <div class="concept-desc">The evolved version of what you already have. Same Buzz colours, same logic — but with a proper card hierarchy, cleaner mobile layout, and a four-tab structure that doesn't overwhelm. Closest to a straight rebuild.</div>
+</div>
+<div class="device-row">
+
+  <!-- PHONE -->
+  <div class="device-wrap">
+    <div class="device-label">Mobile · Event Day</div>
+    <div class="phone-frame">
+      <div class="c3">
+        <div class="c3-header">
+          <div>
+            <div class="c3-logo">MH Buzz Host</div>
+            <div class="c3-date">4th March<br>2026</div>
+          </div>
+          <div class="c3-live-badge">LIVE</div>
+        </div>
+        <div class="c3-tabs">
+          <div class="c3-tab active">Today</div>
+          <div class="c3-tab">Insights</div>
+          <div class="c3-tab">People</div>
+          <div class="c3-tab">Settings</div>
+        </div>
+        <div class="c3-body">
+          <div class="c3-card c3-card-accent-teal">
+            <div class="c3-card-title">Attendance · 4 March</div>
+            <div class="c3-stat-grid">
+              <div class="c3-stat"><div class="c3-stat-val">47</div><div class="c3-stat-label">In Room</div></div>
+              <div class="c3-stat"><div class="c3-stat-val" style="color:#D60B52">8</div><div class="c3-stat-label">First-Timers</div></div>
+              <div class="c3-stat"><div class="c3-stat-val" style="color:#F39200">3</div><div class="c3-stat-label">BN2B</div></div>
+              <div class="c3-stat"><div class="c3-stat-val" style="color:#aaa">4</div><div class="c3-stat-label">No-Shows</div></div>
+            </div>
+          </div>
+          <div class="c3-card c3-card-accent-pink">
+            <div class="c3-card-title">New This Month</div>
+            <div class="c3-person">
+              <div class="c3-avatar" style="background:#ffeef2;color:#D60B52">SJ</div>
+              <div class="c3-person-info">
+                <div class="c3-person-name">Sarah Jennings</div>
+                <div class="c3-person-co">Peak Digital</div>
+              </div>
+              <div><span class="c3-chip c3-chip-new">New</span><span class="c3-chip c3-chip-bn2b">BN2B</span></div>
+            </div>
+            <div class="c3-person">
+              <div class="c3-avatar" style="background:#eef5f1;color:#2a6b4a">TA</div>
+              <div class="c3-person-info">
+                <div class="c3-person-name">Tom Aldridge</div>
+                <div class="c3-person-co">Aldridge Law</div>
+              </div>
+              <span class="c3-chip c3-chip-new">New</span>
+            </div>
+            <div class="c3-person">
+              <div class="c3-avatar" style="background:#fff8ee;color:#F39200">CB</div>
+              <div class="c3-person-info">
+                <div class="c3-person-name">Claire Booth</div>
+                <div class="c3-person-co">CB Bookkeeping</div>
+              </div>
+              <span class="c3-chip c3-chip-new">New</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHONE 2 -->
+  <div class="device-wrap">
+    <div class="device-label">Mobile · Insights</div>
+    <div class="phone-frame">
+      <div class="c3">
+        <div class="c3-header">
+          <div>
+            <div class="c3-logo">MH Buzz Host</div>
+            <div class="c3-date">Feb 2026</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="color:rgba(255,255,255,0.7);font-size:18px;cursor:pointer">←</span>
+            <span style="color:rgba(255,255,255,0.7);font-size:18px;cursor:pointer">→</span>
+          </div>
+        </div>
+        <div class="c3-tabs">
+          <div class="c3-tab">Today</div>
+          <div class="c3-tab active">Insights</div>
+          <div class="c3-tab">People</div>
+          <div class="c3-tab">Settings</div>
+        </div>
+        <div class="c3-body">
+          <div class="c3-card c3-card-accent-teal">
+            <div class="c3-card-title">Event Summary · Feb</div>
+            <div class="c3-stat-grid">
+              <div class="c3-stat"><div class="c3-stat-val">52</div><div class="c3-stat-label">In Room</div></div>
+              <div class="c3-stat"><div class="c3-stat-val" style="color:#B6BD00">78</div><div class="c3-stat-label">Health</div></div>
+            </div>
+            <div style="margin-top:10px">
+              <div style="font-size:10px;color:#7a748a;font-weight:600;margin-bottom:4px">Booking fill rate</div>
+              <div class="c3-progress"><div class="c3-progress-fill" style="width:82%"></div></div>
+              <div style="font-size:10px;color:#7a748a;margin-top:3px;text-align:right">52 / 63 booked</div>
+            </div>
+          </div>
+          <div class="c3-card c3-card-accent-orange">
+            <div class="c3-card-title">Hot Streaks · 6 months</div>
+            <div class="c3-streak-person">
+              <span>Adrian Croft</span>
+              <div class="c3-streak-dots">
+                <div class="c3-sdot on"></div><div class="c3-sdot on"></div><div class="c3-sdot on"></div>
+                <div class="c3-sdot on"></div><div class="c3-sdot on"></div><div class="c3-sdot dim"></div>
+              </div>
+            </div>
+            <div class="c3-streak-person">
+              <span>Lisa Patel</span>
+              <div class="c3-streak-dots">
+                <div class="c3-sdot on"></div><div class="c3-sdot on"></div><div class="c3-sdot on"></div>
+                <div class="c3-sdot on"></div><div class="c3-sdot"></div><div class="c3-sdot dim"></div>
+              </div>
+            </div>
+            <div class="c3-streak-person">
+              <span>Marcus Webb</span>
+              <div class="c3-streak-dots">
+                <div class="c3-sdot on"></div><div class="c3-sdot on"></div><div class="c3-sdot on"></div>
+                <div class="c3-sdot"></div><div class="c3-sdot dim"></div><div class="c3-sdot dim"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESKTOP -->
+  <div class="device-wrap" style="flex:2;min-width:400px">
+    <div class="device-label">Desktop · Today</div>
+    <div class="desktop-frame">
+      <div class="frame-bar" style="background:#e8e8f0">
+        <div class="frame-dot" style="background:#ff5f56"></div>
+        <div class="frame-dot" style="background:#ffbd2e"></div>
+        <div class="frame-dot" style="background:#27c93f"></div>
+      </div>
+      <div class="c3-desktop">
+        <div class="c3-desktop-header">
+          <div>
+            <div class="c3-desktop-title">MH Buzz Host Companion</div>
+            <div class="c3-desktop-date">4th March 2026</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button style="background:rgba(255,255,255,0.15);border:none;color:#fff;padding:6px 12px;border-radius:6px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">← Feb</button>
+            <button style="background:rgba(255,255,255,0.15);border:none;color:#fff;padding:6px 12px;border-radius:6px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">↻</button>
+          </div>
+        </div>
+        <div class="c3-desktop-nav">
+          <div class="c3-desktop-tab active">Today</div>
+          <div class="c3-desktop-tab">Insights</div>
+          <div class="c3-desktop-tab">Loyalty</div>
+          <div class="c3-desktop-tab">People</div>
+          <div class="c3-desktop-tab">Settings</div>
+        </div>
+        <div class="c3-desktop-body">
+          <div class="c3-desktop-card">
+            <div class="c3-desktop-card-title">Attendance</div>
+            <div class="c3-big">52</div>
+            <div class="c3-big-label">In the Room · 4 March</div>
+            <div class="c3-mini-kpis">
+              <div class="c3-mini-kpi"><div class="c3-mini-val" style="color:#D60B52">8</div><div class="c3-mini-label">First-Timers</div></div>
+              <div class="c3-mini-kpi"><div class="c3-mini-val" style="color:#F39200">3</div><div class="c3-mini-label">BN2B</div></div>
+              <div class="c3-mini-kpi"><div class="c3-mini-val" style="color:#aaa">4</div><div class="c3-mini-label">No-Shows</div></div>
+              <div class="c3-mini-kpi"><div class="c3-mini-val" style="color:#00A19A">6</div><div class="c3-mini-label">Host Team</div></div>
+            </div>
+          </div>
+          <div class="c3-desktop-card">
+            <div class="c3-desktop-card-title">New This Month</div>
+            <div class="c3-person" style="padding:8px 0">
+              <div class="c3-avatar" style="background:#ffeef2;color:#D60B52;width:28px;height:28px;font-size:10px">SJ</div>
+              <div class="c3-person-info"><div style="font-size:12px;font-weight:700">Sarah Jennings</div><div style="font-size:10px;color:#7a748a">Peak Digital</div></div>
+              <div><span class="c3-chip c3-chip-new">New</span><span class="c3-chip c3-chip-bn2b">BN2B</span></div>
+            </div>
+            <div class="c3-person" style="padding:8px 0">
+              <div class="c3-avatar" style="background:#eef5f1;color:#2a6b4a;width:28px;height:28px;font-size:10px">TA</div>
+              <div class="c3-person-info"><div style="font-size:12px;font-weight:700">Tom Aldridge</div><div style="font-size:10px;color:#7a748a">Aldridge Law</div></div>
+              <span class="c3-chip c3-chip-new">New</span>
+            </div>
+            <div class="c3-person" style="padding:8px 0">
+              <div class="c3-avatar" style="background:#fff8ee;color:#F39200;width:28px;height:28px;font-size:10px">CB</div>
+              <div class="c3-person-info"><div style="font-size:12px;font-weight:700">Claire Booth</div><div style="font-size:10px;color:#7a748a">CB Bookkeeping</div></div>
+              <span class="c3-chip c3-chip-new">New</span>
+            </div>
+            <div class="c3-person" style="padding:8px 0">
+              <div class="c3-avatar" style="background:#f0f0ff;color:#6060cc;width:28px;height:28px;font-size:10px">MW</div>
+              <div class="c3-person-info"><div style="font-size:12px;font-weight:700">Marcus Webb</div><div style="font-size:10px;color:#7a748a">Webb Financial</div></div>
+              <span class="c3-chip c3-chip-new">New</span>
+            </div>
+          </div>
+          <div class="c3-desktop-card">
+            <div class="c3-desktop-card-title">321 Tracker</div>
+            <div class="c3-mini-kpis">
+              <div class="c3-mini-kpi"><div class="c3-mini-val" style="color:#00A19A">34</div><div class="c3-mini-label">Met 3 New</div></div>
+              <div class="c3-mini-kpi"><div class="c3-mini-val" style="color:#B6BD00">28</div><div class="c3-mini-label">Set 1-2-1s</div></div>
+              <div class="c3-mini-kpi"><div class="c3-mini-val" style="color:#F39200">19</div><div class="c3-mini-label">Brought 1</div></div>
+              <div class="c3-mini-kpi"><div class="c3-mini-val" style="color:#D60B52">72%</div><div class="c3-mini-label">Engagement</div></div>
+            </div>
+            <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(0,0,0,0.06)">
+              <div style="font-size:10px;color:#7a748a;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Tracker Engagement</div>
+              <div class="c3-progress"><div class="c3-progress-fill" style="width:72%"></div></div>
+              <div style="font-size:10px;color:#7a748a;margin-top:3px">34 of 47 in room submitted</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- COMPARISON -->
+<div class="comparison">
+  <h2>Which fits?</h2>
+  <div class="comp-grid">
+    <div class="comp-card" style="border-color:#00e5cc22">
+      <div class="comp-title" style="color:#00e5cc">01 · Field Operations</div>
+      <div class="comp-row pro">Maximum information density</div>
+      <div class="comp-row pro">Feels purposeful and serious</div>
+      <div class="comp-row pro">Easy to scan under pressure</div>
+      <div class="comp-row">Dark — harder on bright venues</div>
+      <div class="comp-row">Monospace can feel cold</div>
+      <div class="comp-row">Less familiar to non-tech users</div>
+    </div>
+    <div class="comp-card" style="border-color:#c45c2a44">
+      <div class="comp-title" style="color:#c45c2a">02 · Warm Editorial</div>
+      <div class="comp-row pro">Feels premium and considered</div>
+      <div class="comp-row pro">Readable in any lighting</div>
+      <div class="comp-row pro">Reports feel like documents worth sharing</div>
+      <div class="comp-row">Serif type slower to scan quickly</div>
+      <div class="comp-row">Less "live ops" energy</div>
+      <div class="comp-row">Further from current tool feel</div>
+    </div>
+    <div class="comp-card" style="border-color:#00A19A44">
+      <div class="comp-title" style="color:#00A19A">03 · Kinetic Card</div>
+      <div class="comp-row pro">Familiar — Buzz colours, same logic</div>
+      <div class="comp-row pro">Mobile-first card layout works well</div>
+      <div class="comp-row pro">Easiest migration from current tool</div>
+      <div class="comp-row pro">Avatars add warmth to the people lists</div>
+      <div class="comp-row">Most conventional of the three</div>
+      <div class="comp-row">Risk of feeling like a reskin not a rebuild</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
