@@ -1,4 +1,7 @@
-<!DOCTYPE html>
+Absolutely. Here is the full replacement `index.html` with no-shows as `Full Name + Reason`, reason capped at 40 characters.
+
+```html
+<!DOCTYPE html> 
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -62,6 +65,7 @@
             const [inRoom, setInRoom] = useState('');
             const [team, setTeam] = useState('');
             const [notes, setNotes] = useState('');
+            const [noShows, setNoShows] = useState([{ name: '', reason: '' }]);
             const [submittedBy, setSubmittedBy] = useState('');
             const [warn, setWarn] = useState(null);
             const [edit, setEdit] = useState(null);
@@ -106,7 +110,7 @@
             };
 
             const submitToSheets = async (eventData) => {
-                const payload = { venue: eventData.venue, month: eventData.month, date: eventData.date, metThreeNew: eventData.scores.blue, oneToOnes: eventData.scores.red, broughtSomeone: eventData.scores.green, inRoom: parseFloat(eventData.inRoom) || 0, hostingTeam: eventData.team || '', buzzIn: eventData.buzzInCount || 0, buzzOut: eventData.buzzOutCount || 0, totalBuzzers: eventData.buzzerCount || 0, notes: eventData.notes || '', submittedBy: eventData.submittedBy || '' };
+                const payload = { venue: eventData.venue, month: eventData.month, date: eventData.date, metThreeNew: eventData.scores.blue, oneToOnes: eventData.scores.red, broughtSomeone: eventData.scores.green, inRoom: parseFloat(eventData.inRoom) || 0, hostingTeam: eventData.team || '', buzzIn: eventData.buzzInCount || 0, buzzOut: eventData.buzzOutCount || 0, totalBuzzers: eventData.buzzerCount || 0, notes: eventData.notes || '', noShows: eventData.noShows || [], submittedBy: eventData.submittedBy || '' };
                 await fetch(SHEETS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             };
 
@@ -123,10 +127,10 @@
             const go = (m, ex) => {
                 setMonth(m); setWarn(null);
                 if (ex && !ex.done) {
-                    setScores(ex.scores); setPresses(ex.presses || []); setDate(ex.date); setNotes(ex.notes || ''); setSubmittedBy(ex.submittedBy || '');
+                    setScores(ex.scores); setPresses(ex.presses || []); setDate(ex.date); setNotes(ex.notes || ''); setNoShows(ex.noShows && ex.noShows.length ? ex.noShows : [{ name: '', reason: '' }]); setSubmittedBy(ex.submittedBy || '');
                     buzzerCountRef.current = ex.buzzerCount || 0; buzzInCountRef.current = ex.buzzInCount || 0; buzzOutCountRef.current = ex.buzzOutCount || 0;
                 } else {
-                    setDate(new Date().toISOString().split('T')[0]); setScores({ blue: 0, red: 0, green: 0 }); setPresses([]); setNotes(''); setSubmittedBy('');
+                    setDate(new Date().toISOString().split('T')[0]); setScores({ blue: 0, red: 0, green: 0 }); setPresses([]); setNotes(''); setNoShows([{ name: '', reason: '' }]); setSubmittedBy('');
                     buzzerCountRef.current = 0; buzzInCountRef.current = 0; buzzOutCountRef.current = 0;
                 }
                 setPinMode('start'); setPin(''); setPinError(false); setScreen('pin');
@@ -147,7 +151,7 @@
                 buzzerCountRef.current = 0; buzzInCountRef.current = 0; buzzOutCountRef.current = 0;
                 lastInteractionRef.current = 0; lastBuzzInRef.current = 0; lastBuzzOutRef.current = 0;
                 const k = key(venue, month); const e = { ...events };
-                e[k] = { venue, month, date, scores: { blue: 0, red: 0, green: 0 }, presses: [], notes, inRoom: '', team: '', done: false, buzzerCount: 0, buzzInCount: 0, buzzOutCount: 0 };
+                e[k] = { venue, month, date, scores: { blue: 0, red: 0, green: 0 }, presses: [], notes, noShows, inRoom: '', team: '', done: false, buzzerCount: 0, buzzInCount: 0, buzzOutCount: 0 };
                 save(e); setWarn(null); setScreen('track');
             };
 
@@ -176,7 +180,7 @@
                     const s = { ...scores }; s[color]--; setScores(s);
                     const np = presses.slice(0, -1); setPresses(np);
                     const k = key(venue, month); const e = { ...events };
-                    e[k] = { venue, month, date, scores: s, presses: np, notes, inRoom: '', team: '', done: false, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
+                    e[k] = { venue, month, date, scores: s, presses: np, notes, noShows, inRoom: '', team: '', done: false, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
                     save(e);
                 }
             };
@@ -194,13 +198,37 @@
                 const ps = [...presses, { color, time: new Date().toISOString(), block: cb }];
                 setScores(s); setPresses(ps); showEmoji(color);
                 const k = key(venue, month); const e = { ...events };
-                e[k] = { venue, month, date, scores: s, presses: ps, notes, inRoom: '', team: '', done: false, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
+                e[k] = { venue, month, date, scores: s, presses: ps, notes, noShows, inRoom: '', team: '', done: false, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
                 save(e);
+            };
+
+            const updateNoShow = (index, field, value) => {
+                const updated = [...noShows];
+                updated[index] = { ...updated[index], [field]: value };
+                setNoShows(updated);
+            };
+
+            const addNoShow = () => {
+                setNoShows([...noShows, { name: '', reason: '' }]);
+            };
+
+            const removeNoShow = (index) => {
+                const updated = noShows.filter((_, i) => i !== index);
+                setNoShows(updated.length ? updated : [{ name: '', reason: '' }]);
+            };
+
+            const cleanNoShows = () => {
+                return noShows
+                    .map(n => ({
+                        name: (n.name || '').trim(),
+                        reason: (n.reason || '').trim()
+                    }))
+                    .filter(n => n.name || n.reason);
             };
 
             const finish = async (skip) => {
                 const k = key(venue, month);
-                const eventData = { venue, month, date, scores, presses, inRoom: skip ? '' : inRoom, team: skip ? '' : team, notes, submittedBy: skip ? '' : submittedBy, done: true, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
+                const eventData = { venue, month, date, scores, presses, inRoom: skip ? '' : inRoom, team: skip ? '' : team, notes, noShows: skip ? [] : cleanNoShows(), submittedBy: skip ? '' : submittedBy, done: true, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
                 const e = { ...events }; e[k] = eventData; save(e);
                 if (!skip) {
                     setSubmitting(true); setSubmitStatus(null);
@@ -211,7 +239,7 @@
 
             const resetAndGoHome = () => {
                 setVenue(''); setMonth(''); setScores({ blue: 0, red: 0, green: 0 }); setPresses([]);
-                setInRoom(''); setTeam(''); setNotes(''); setSubmittedBy(''); setSubmitStatus(null);
+                setInRoom(''); setTeam(''); setNotes(''); setNoShows([{ name: '', reason: '' }]); setSubmittedBy(''); setSubmitStatus(null);
                 buzzerCountRef.current = 0; buzzInCountRef.current = 0; buzzOutCountRef.current = 0;
                 lastInteractionRef.current = 0; lastBuzzInRef.current = 0; lastBuzzOutRef.current = 0;
                 setScreen('venue');
@@ -231,8 +259,24 @@
                 try { const b = new Blob([c], { type: 'text/csv' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'lrbuzz-' + new Date().toISOString().split('T')[0] + '.csv'; a.click(); } catch (e) { alert(c); }
             };
 
-            const editEv = (k) => { const ev = events[k]; setEdit(k); setInRoom(ev.inRoom || ''); setTeam(ev.team || ''); setNotes(ev.notes || ''); setScores(ev.scores); setEditScores(false); };
-            const saveEdit = () => { const e = { ...events }; e[edit] = { ...events[edit], inRoom, team, notes, scores }; save(e); setEdit(null); setEditScores(false); setInRoom(''); setTeam(''); setNotes(''); };
+            const editEv = (k) => { const ev = events[k]; setEdit(k); setInRoom(ev.inRoom || ''); setTeam(ev.team || ''); setNotes(ev.notes || ''); setNoShows(ev.noShows && ev.noShows.length ? ev.noShows : [{ name: '', reason: '' }]); setScores(ev.scores); setEditScores(false); };
+            const saveEdit = () => { const e = { ...events }; e[edit] = { ...events[edit], inRoom, team, notes, noShows: cleanNoShows(), scores }; save(e); setEdit(null); setEditScores(false); setInRoom(''); setTeam(''); setNotes(''); setNoShows([{ name: '', reason: '' }]); };
+
+            const NoShowFields = () => (
+                <div className="mb-4">
+                    <label className="block font-semibold mb-2">No Shows</label>
+                    <div className="flex flex-col gap-2">
+                        {noShows.map((person, index) => (
+                            <div key={index} className="flex gap-2">
+                                <input type="text" value={person.name || ''} onChange={(e) => updateNoShow(index, 'name', e.target.value)} className="flex-1 p-3 border-2 rounded-lg" placeholder={'No show ' + (index + 1) + ' full name'} />
+                                <input type="text" value={person.reason || ''} onChange={(e) => updateNoShow(index, 'reason', e.target.value)} className="flex-1 p-3 border-2 rounded-lg" placeholder="Reason" maxLength="40" />
+                                {noShows.length > 1 && <button onClick={() => removeNoShow(index)} className="px-4 bg-gray-300 rounded-lg font-semibold" type="button">−</button>}
+                                {index === noShows.length - 1 && <button onClick={addNoShow} className="px-4 bg-blue-600 text-white rounded-lg font-semibold" type="button">+</button>}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
 
             if (warn) return (
                 <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
@@ -397,6 +441,7 @@
                             <div className="mb-4"><label className="block font-semibold mb-2">In the Room</label><input type="number" value={inRoom} onChange={(e) => setInRoom(e.target.value)} className="w-full p-3 border-2 rounded-lg" /></div>
                             <div className="mb-4"><label className="block font-semibold mb-2">Hosting Team</label><input type="number" value={team} onChange={(e) => setTeam(e.target.value)} className="w-full p-3 border-2 rounded-lg" /></div>
                             <div className="mb-4"><label className="block font-semibold mb-2">Your Name</label><input type="text" value={submittedBy} onChange={(e) => setSubmittedBy(e.target.value)} className="w-full p-3 border-2 rounded-lg" placeholder="Who ran this event?" /></div>
+                            <NoShowFields />
                             <div className="mb-6"><label className="block font-semibold mb-2">Notes</label><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 rounded-lg" rows="3"></textarea></div>
                             <div className="flex gap-4">
                                 <button onClick={() => finish(true)} className="flex-1 p-4 bg-gray-300 rounded-lg font-semibold">Later</button>
@@ -463,6 +508,7 @@
                                             <>
                                                 <div className="mb-4"><label className="block font-semibold mb-2">In the Room</label><input type="number" value={inRoom} onChange={(e) => setInRoom(e.target.value)} className="w-full p-3 border-2 rounded-lg" /></div>
                                                 <div className="mb-4"><label className="block font-semibold mb-2">Hosting Team</label><input type="number" value={team} onChange={(e) => setTeam(e.target.value)} className="w-full p-3 border-2 rounded-lg" /></div>
+                                                <NoShowFields />
                                                 <div className="mb-4"><label className="block font-semibold mb-2">Notes</label><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 rounded-lg" rows="3"></textarea></div>
                                                 <button onClick={() => setEditScores(true)} className="w-full p-3 mb-4 bg-yellow-600 text-white rounded-lg font-semibold">Edit 321 Scores</button>
                                             </>
@@ -475,7 +521,7 @@
                                             </>
                                         )}
                                         <div className="flex gap-4">
-                                            <button onClick={() => { setEdit(null); setEditScores(false); setInRoom(''); setTeam(''); setNotes(''); }} className="flex-1 p-3 bg-gray-300 rounded-lg font-semibold">Cancel</button>
+                                            <button onClick={() => { setEdit(null); setEditScores(false); setInRoom(''); setTeam(''); setNotes(''); setNoShows([{ name: '', reason: '' }]); }} className="flex-1 p-3 bg-gray-300 rounded-lg font-semibold">Cancel</button>
                                             <button onClick={saveEdit} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
                                         </div>
                                     </div>
@@ -491,3 +537,4 @@
     </script>
 </body>
 </html>
+```
