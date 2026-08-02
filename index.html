@@ -1,0 +1,614 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LR Buzz 321 Tracker</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#111827">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="321 Tracker">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="config.js"></script>
+    <style>
+        @keyframes pop {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 1; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+        .emoji-pop {
+            animation: pop 1.2s ease-out;
+            position: absolute;
+            font-size: 4rem;
+            pointer-events: none;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.08); opacity: 0.85; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pulse-ring { animation: pulse-ring 2s ease-in-out infinite; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const VENUES = ['Hinckley', 'Leicester', 'Loughborough', 'Lutterworth', 'Market Harborough'];
+        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const APP_VERSION = 'v2026.08';
+        const COOLDOWN = 3000;
+        const BUZZER_WINDOW = 5000;
+        const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxFwsTaVsTi6HV-uMvyejn2D7pqFI2lvDejYaDKvYlRqf8hI7giVDGu1V8_UU_eAxeElw/exec';
+
+        const formatBritishDate = (isoDate) => {
+            if (!isoDate) return '';
+            const d = new Date(isoDate + 'T12:00:00');
+            const day = d.getDate();
+            const suffix = (day === 1 || day === 21 || day === 31) ? 'st' : (day === 2 || day === 22) ? 'nd' : (day === 3 || day === 23) ? 'rd' : 'th';
+            const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            return day + suffix + ' ' + monthNames[d.getMonth()] + ' ' + d.getFullYear();
+        };
+
+        function App() {
+            const [screen, setScreen] = useState('venue');
+            const [venue, setVenue] = useState('');
+            const [month, setMonth] = useState('');
+            const [date, setDate] = useState('');
+            const [pin, setPin] = useState('');
+            const [pinError, setPinError] = useState(false);
+            const [pinMode, setPinMode] = useState('');
+            const [events, setEvents] = useState({});
+            const [scores, setScores] = useState({ blue: 0, red: 0, green: 0 });
+            const [presses, setPresses] = useState([]);
+            const [inRoom, setInRoom] = useState('');
+            const [team, setTeam] = useState('');
+            const [notes, setNotes] = useState('');
+            const [noShows, setNoShows] = useState([{ name: '', reason: '' }]);
+            const [submittedBy, setSubmittedBy] = useState('');
+            const [warn, setWarn] = useState(null);
+            const [updateState, setUpdateState] = useState('');
+            const [edit, setEdit] = useState(null);
+            const [editScores, setEditScores] = useState(false);
+            const [lastPressAttempt, setLastPressAttempt] = useState({ blue: 0, red: 0, green: 0 });
+            const [emoji, setEmoji] = useState(null);
+            const [longPressTimer, setLongPressTimer] = useState(null);
+            const [submitting, setSubmitting] = useState(false);
+            const [submitStatus, setSubmitStatus] = useState(null);
+            const lastInteractionRef = useRef(0);
+            const buzzerCountRef = useRef(0);
+            const buzzInCountRef = useRef(0);
+            const buzzOutCountRef = useRef(0);
+            const lastBuzzInRef = useRef(0);
+            const lastBuzzOutRef = useRef(0);
+
+            useEffect(() => {
+                try { const data = localStorage.getItem('lrbuzz'); if (data) setEvents(JSON.parse(data)); } catch (e) {}
+            }, []);
+
+            const save = (e) => { try { localStorage.setItem('lrbuzz', JSON.stringify(e)); setEvents(e); } catch (err) {} };
+            const key = (v, m) => v + '-' + m;
+            const getVenueConfig = (v) => VENUE_CONFIG[v] || { host: v, pin: '0000', photo: '' };
+
+            const block = () => {
+                const t = new Date().getHours() * 100 + new Date().getMinutes();
+                if (t >= 900 && t < 1100) return 'buzzing-in';
+                if (t >= 1100 && t <= 1300) return 'buzzing-out';
+                return 'outside-hours';
+            };
+
+            const getTimeRemaining = () => {
+                const now = new Date();
+                const ct = now.getHours() * 60 + now.getMinutes();
+                const es = 10 * 60, ee = 12 * 60;
+                if (ct < es) return 'Starting soon';
+                if (ct >= es && ct <= ee) {
+                    const r = ee - ct, hrs = Math.floor(r / 60), mins = r % 60;
+                    return 'Buzz time remaining: ' + (hrs > 0 ? hrs + 'h ' : '') + mins + 'm';
+                }
+                return 'Event ended';
+            };
+
+            const normalizeNoShows = (saved) => {
+                if (!Array.isArray(saved) || saved.length === 0) return [{ name: '', reason: '' }];
+                return saved.map(item => {
+                    if (typeof item === 'string') return { name: item, reason: '' };
+                    return {
+                        name: item && item.name ? item.name : '',
+                        reason: item && item.reason ? item.reason : ''
+                    };
+                });
+            };
+
+            const submitToSheets = async (eventData) => {
+                const payload = { venue: eventData.venue, month: eventData.month, date: eventData.date, metThreeNew: eventData.scores.blue, oneToOnes: eventData.scores.red, broughtSomeone: eventData.scores.green, inRoom: parseFloat(eventData.inRoom) || 0, hostingTeam: eventData.team || '', buzzIn: eventData.buzzInCount || 0, buzzOut: eventData.buzzOutCount || 0, totalBuzzers: eventData.buzzerCount || 0, notes: eventData.notes || '', noShows: eventData.noShows || [], submittedBy: eventData.submittedBy || '' };
+                await fetch(SHEETS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            };
+
+            const pickVenue = (v) => { setVenue(v); setScreen('month'); };
+
+            const pickMonth = (m) => {
+                const k = key(venue, m), ex = events[k];
+                const curr = new Date().getMonth(), sel = MONTHS.indexOf(m);
+                if (sel > curr) { setWarn({ msg: 'Selecting ' + m + ' (future). Continue?', ok: () => go(m, ex) }); return; }
+                if (ex && ex.done) { setWarn({ msg: 'Data exists for ' + m + '. Overwrite?', ok: () => go(m, ex) }); return; }
+                go(m, ex);
+            };
+
+            const go = (m, ex) => {
+                setMonth(m); setWarn(null);
+                if (ex && !ex.done) {
+                    setScores(ex.scores); setPresses(ex.presses || []); setDate(ex.date); setNotes(ex.notes || ''); setNoShows(normalizeNoShows(ex.noShows)); setSubmittedBy(ex.submittedBy || '');
+                    buzzerCountRef.current = ex.buzzerCount || 0; buzzInCountRef.current = ex.buzzInCount || 0; buzzOutCountRef.current = ex.buzzOutCount || 0;
+                } else {
+                    setDate(new Date().toISOString().split('T')[0]); setScores({ blue: 0, red: 0, green: 0 }); setPresses([]); setNotes(''); setNoShows([{ name: '', reason: '' }]); setSubmittedBy('');
+                    buzzerCountRef.current = 0; buzzInCountRef.current = 0; buzzOutCountRef.current = 0;
+                }
+                setPinMode('start'); setPin(''); setPinError(false); setScreen('pin');
+            };
+
+            const checkPin = () => {
+                const config = getVenueConfig(venue);
+                if (pin === config.pin) {
+                    setPinError(false); setPin('');
+                    if (pinMode === 'start') setScreen('track');
+                    else if (pinMode === 'finish') setScreen('finish');
+                    else if (pinMode === 'reset') setWarn({ msg: 'Reset all scores for ' + venue + ' — ' + month + ' to zero? This cannot be undone.', ok: () => doReset() });
+                } else { setPinError(true); setPin(''); }
+            };
+
+            const doReset = () => {
+                setScores({ blue: 0, red: 0, green: 0 }); setPresses([]);
+                buzzerCountRef.current = 0; buzzInCountRef.current = 0; buzzOutCountRef.current = 0;
+                lastInteractionRef.current = 0; lastBuzzInRef.current = 0; lastBuzzOutRef.current = 0;
+                const k = key(venue, month); const e = { ...events };
+                e[k] = { venue, month, date, scores: { blue: 0, red: 0, green: 0 }, presses: [], notes, noShows, inRoom: '', team: '', done: false, buzzerCount: 0, buzzInCount: 0, buzzOutCount: 0 };
+                save(e); setWarn(null); setScreen('track');
+            };
+
+            const showEmoji = (color) => {
+                const emojis = { blue: '🎉', red: '🥳', green: '🙏' };
+                setEmoji({ emoji: emojis[color], color }); setTimeout(() => setEmoji(null), 1200); playSound(color);
+            };
+
+            const playSound = (color) => {
+                try { if (navigator.vibrate) navigator.vibrate(40); } catch (e) {}
+                try {
+                    const ac = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ac.createOscillator(), gain = ac.createGain();
+                    osc.connect(gain); gain.connect(ac.destination);
+                    osc.frequency.value = { blue: 523.25, red: 659.25, green: 783.99 }[color]; osc.type = 'sine';
+                    gain.gain.setValueAtTime(0.3, ac.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ac.currentTime + 0.3);
+                    osc.start(ac.currentTime); osc.stop(ac.currentTime + 0.3);
+                } catch (e) {}
+            };
+
+            const handlePressStart = (color) => { const t = setTimeout(() => { undo(color); setLongPressTimer(null); }, 2000); setLongPressTimer(t); };
+            const handlePressEnd = () => { if (longPressTimer) { clearTimeout(longPressTimer); setLongPressTimer(null); } };
+
+            const undo = (color) => {
+                if (scores[color] > 0) {
+                    const s = { ...scores }; s[color]--; setScores(s);
+                    const np = presses.slice(0, -1); setPresses(np);
+                    const k = key(venue, month); const e = { ...events };
+                    e[k] = { venue, month, date, scores: s, presses: np, notes, noShows, inRoom: '', team: '', done: false, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
+                    save(e);
+                }
+            };
+
+            const press = (color) => {
+                const now = Date.now();
+                if (now - lastPressAttempt[color] < COOLDOWN) { setLastPressAttempt({ ...lastPressAttempt, [color]: now }); return; }
+                setLastPressAttempt({ ...lastPressAttempt, [color]: now });
+                if (now - lastInteractionRef.current > BUZZER_WINDOW) buzzerCountRef.current++;
+                lastInteractionRef.current = now;
+                const cb = block();
+                if (cb === 'buzzing-in') { if (now - lastBuzzInRef.current > BUZZER_WINDOW) buzzInCountRef.current++; lastBuzzInRef.current = now; }
+                else if (cb === 'buzzing-out') { if (now - lastBuzzOutRef.current > BUZZER_WINDOW) buzzOutCountRef.current++; lastBuzzOutRef.current = now; }
+                const s = { ...scores }; s[color]++;
+                const ps = [...presses, { color, time: new Date().toISOString(), block: cb }];
+                setScores(s); setPresses(ps); showEmoji(color);
+                const k = key(venue, month); const e = { ...events };
+                e[k] = { venue, month, date, scores: s, presses: ps, notes, noShows, inRoom: '', team: '', done: false, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
+                save(e);
+            };
+
+            const updateNoShow = (index, field, value) => {
+                const updated = [...noShows];
+                updated[index] = { ...updated[index], [field]: value };
+                setNoShows(updated);
+            };
+
+            const addNoShow = () => {
+                setNoShows([...noShows, { name: '', reason: '' }]);
+            };
+
+            const removeNoShow = (index) => {
+                const updated = noShows.filter((_, i) => i !== index);
+                setNoShows(updated.length ? updated : [{ name: '', reason: '' }]);
+            };
+
+            const cleanNoShows = () => {
+                return noShows
+                    .map(n => ({
+                        name: (n.name || '').trim(),
+                        reason: (n.reason || '').trim()
+                    }))
+                    .filter(n => n.name || n.reason);
+            };
+
+            const finish = async (skip) => {
+                const k = key(venue, month);
+                const eventData = { venue, month, date, scores, presses, inRoom: skip ? '' : inRoom, team: skip ? '' : team, notes, noShows: skip ? [] : cleanNoShows(), submittedBy: skip ? '' : submittedBy, done: true, buzzerCount: buzzerCountRef.current, buzzInCount: buzzInCountRef.current, buzzOutCount: buzzOutCountRef.current };
+                const e = { ...events }; e[k] = eventData; save(e);
+                if (!skip) {
+                    setSubmitting(true); setSubmitStatus(null);
+                    try { await submitToSheets(eventData); setSubmitStatus('success'); } catch (err) { setSubmitStatus('offline'); }
+                    setSubmitting(false); setTimeout(() => resetAndGoHome(), 2500);
+                } else { resetAndGoHome(); }
+            };
+
+            const resetAndGoHome = () => {
+                setVenue(''); setMonth(''); setScores({ blue: 0, red: 0, green: 0 }); setPresses([]);
+                setInRoom(''); setTeam(''); setNotes(''); setNoShows([{ name: '', reason: '' }]); setSubmittedBy(''); setSubmitStatus(null);
+                buzzerCountRef.current = 0; buzzInCountRef.current = 0; buzzOutCountRef.current = 0;
+                lastInteractionRef.current = 0; lastBuzzInRef.current = 0; lastBuzzOutRef.current = 0;
+                setScreen('venue');
+            };
+
+            const csv = () => {
+                let c = 'Venue,Month,Date,3 New Met,One 2 Ones,Brought Some1,In Room,Team,Buzz In (10:00-10:45),Buzz Out (11:15-12:00),Total Buzzers Interacting (assumed),% Buzzers Engaged,% Meeting 3 New,% Doing 1-2-1s,Notes\n';
+                Object.values(events).forEach(ev => {
+                    if (ev.done) {
+                        const room = parseInt(ev.inRoom) || 0, buzzers = ev.buzzerCount || 0;
+                        const pctE = room > 0 ? Math.round((buzzers / room) * 100) : 0;
+                        const pct3 = room > 0 ? Math.round((ev.scores.blue / room) * 100) : 0;
+                        const pct2 = room > 0 ? Math.round((ev.scores.red / room) * 100) : 0;
+                        c += ev.venue + ',"' + ev.month + '",' + ev.date + ',' + ev.scores.blue + ',' + ev.scores.red + ',' + ev.scores.green + ',' + (ev.inRoom || '') + ',' + (ev.team || '') + ',' + (ev.buzzInCount || 0) + ',' + (ev.buzzOutCount || 0) + ',' + buzzers + ',' + pctE + '%,' + pct3 + '%,' + pct2 + '%,"' + (ev.notes || '') + '"\n';
+                    }
+                });
+                try { const b = new Blob([c], { type: 'text/csv' }); const u = URL.createObjectURL(b); const a = document.createElement('a'); a.href = u; a.download = 'lrbuzz-' + new Date().toISOString().split('T')[0] + '.csv'; a.click(); } catch (e) { alert(c); }
+            };
+
+            const editEv = (k) => { const ev = events[k]; setEdit(k); setInRoom(ev.inRoom || ''); setTeam(ev.team || ''); setNotes(ev.notes || ''); setNoShows(normalizeNoShows(ev.noShows)); setScores(ev.scores); setEditScores(false); };
+            const saveEdit = () => { const e = { ...events }; e[edit] = { ...events[edit], inRoom, team, notes, noShows: cleanNoShows(), scores }; save(e); setEdit(null); setEditScores(false); setInRoom(''); setTeam(''); setNotes(''); setNoShows([{ name: '', reason: '' }]); };
+
+            const doUpdateCheck = async () => {
+                setUpdateState('checking');
+                try {
+                    const res = window.checkForAppUpdate ? await window.checkForAppUpdate() : 'unsupported';
+                    if (res === 'latest') setUpdateState('latest');
+                    else if (res === 'unsupported') setUpdateState('unsupported');
+                    // 'updating' / 'reloading' will refresh the page automatically
+                } catch (e) { setUpdateState('latest'); }
+                setTimeout(() => setUpdateState(''), 4000);
+            };
+
+            const ordinal = (n) => {
+                const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+                return n + (s[(v - 20) % 10] || s[v] || s[0]);
+            };
+
+            const renderNoShowFields = () => (
+                <div className="mb-4">
+                    <label className="block font-semibold mb-2">No Shows</label>
+                    <div className="flex flex-col gap-3">
+                        {noShows.map((person, index) => (
+                            <div key={index} className="border-2 rounded-lg p-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <input type="text" value={person.name || ''} onChange={(e) => updateNoShow(index, 'name', e.target.value)} className="flex-1 p-3 border-2 rounded-lg" placeholder={ordinal(index + 1) + ' (Full Name)'} />
+                                    {noShows.length > 1 && <button onClick={() => removeNoShow(index)} className="px-3 py-2 text-red-600 font-bold text-lg" type="button" aria-label="Remove this no-show">✕</button>}
+                                </div>
+                                <input type="text" value={person.reason || ''} onChange={(e) => updateNoShow(index, 'reason', e.target.value)} className="w-full p-3 border-2 rounded-lg" placeholder="Reason (optional)" maxLength="40" />
+                            </div>
+                        ))}
+                    </div>
+                    <button onClick={addNoShow} className="w-full mt-3 p-3 border-2 border-dashed border-blue-500 text-blue-600 rounded-lg font-semibold" type="button">+ Add another no-show</button>
+                </div>
+            );
+
+            if (warn) return (
+                <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg p-8 max-w-md w-full">
+                        <h2 className="text-2xl font-bold mb-4">Warning</h2>
+                        <p className="mb-6">{warn.msg}</p>
+                        <div className="flex gap-4">
+                            <button onClick={() => { setWarn(null); setScreen('track'); }} className="flex-1 p-3 bg-gray-300 rounded-lg font-semibold">No</button>
+                            <button onClick={warn.ok} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-semibold">Yes</button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            if (screen === 'venue') return (
+                <div className="min-h-screen bg-gray-900 p-8">
+                    <div className="max-w-4xl mx-auto">
+                        <h1 className="text-4xl font-bold text-white mb-2 text-center">LR Buzz 321 Tracker</h1>
+                        <p className="text-gray-400 text-center mb-4">Select your venue to begin</p>
+                        <div className="flex items-center justify-center gap-2 mb-8 mx-auto max-w-md bg-gray-800 border border-yellow-500/40 text-yellow-300 rounded-lg px-4 py-2 text-sm text-center">
+                            <span>🔊</span><span>Turn your volume up so you hear each tap.</span>
+                        </div>
+                        <div className="flex flex-col gap-4 mb-8">
+                            {VENUES.map(v => {
+                                const config = getVenueConfig(v);
+                                return (
+                                    <button key={v} onClick={() => pickVenue(v)} className="w-full bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center overflow-hidden">
+                                        {config.photo && <img src={config.photo} alt={config.host} className="h-20 w-20 object-cover object-top flex-shrink-0" />}
+                                        <div className="flex-1 flex justify-between items-center px-6">
+                                            <span className="text-2xl font-semibold">{v}</span>
+                                            <span className="text-lg font-normal opacity-75">Host: {config.host}</span>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <button onClick={() => setScreen('review')} className="w-full p-6 bg-green-600 text-white rounded-lg text-xl font-semibold hover:bg-green-700">Review Historical Data</button>
+                        <div className="flex items-center justify-center gap-3 mt-8 text-gray-500 text-sm">
+                            <span>{APP_VERSION}</span>
+                            <span className="text-gray-700">|</span>
+                            <button onClick={doUpdateCheck} className="underline hover:text-gray-300" type="button">
+                                {updateState === 'checking' ? 'Checking…' : updateState === 'latest' ? 'You’re on the latest version ✓' : updateState === 'unsupported' ? 'Updates not supported here' : 'Check for updates'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            if (screen === 'month') {
+                const config = getVenueConfig(venue);
+                return (
+                    <div className="min-h-screen bg-gray-900 p-8">
+                        <div className="max-w-4xl mx-auto">
+                            <button onClick={() => setScreen('venue')} className="mb-6 text-white">← Back</button>
+                            <div className="flex flex-col items-center mb-6">
+                                {config.photo && <img src={config.photo} alt={config.host} className="w-24 h-24 rounded-full object-cover object-top mb-3 border-4 border-blue-400" />}
+                                <h1 className="text-4xl font-bold text-white mb-1">{venue}</h1>
+                                <p className="text-blue-300 text-xl">Welcome, {config.host}!</p>
+                            </div>
+                            <h2 className="text-2xl text-white mb-6 text-center">Select Month</h2>
+                            <div className="grid grid-cols-4 gap-3">
+                                {MONTHS.map(m => {
+                                    const k = key(venue, m), has = events[k] && events[k].done;
+                                    return <button key={m} onClick={() => pickMonth(m)} className={'p-4 rounded-lg text-xl font-semibold ' + (has ? 'bg-yellow-600 text-white' : 'bg-blue-600 text-white')}>{m.slice(0, 3)}{has && <div className="text-sm mt-1">✓</div>}</button>;
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (screen === 'pin') {
+                const config = getVenueConfig(venue);
+                const titles = { start: 'Hello, ' + config.host + '!', finish: 'Nearly done, ' + config.host + '!', reset: 'Reset scores, ' + config.host + '?' };
+                const subtitles = { start: 'Enter your PIN for ' + venue, finish: 'Enter your PIN to finish', reset: 'Enter your PIN to confirm reset' };
+                return (
+                    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
+                        <div className="bg-white rounded-lg p-8 max-w-md w-full">
+                            {config.photo && <div className="flex justify-center mb-4"><img src={config.photo} alt={config.host} className="w-20 h-20 rounded-full object-cover object-top border-4 border-blue-400" /></div>}
+                            <h2 className="text-2xl font-bold mb-1 text-center">{titles[pinMode]}</h2>
+                            <p className="text-gray-500 text-center mb-6">{subtitles[pinMode]}</p>
+                            <input type="password" value={pin} onChange={(e) => { setPin(e.target.value); setPinError(false); }} onKeyPress={(e) => e.key === 'Enter' && checkPin()} className={'w-full p-4 border-2 rounded-lg text-2xl text-center mb-2 ' + (pinError ? 'border-red-500' : 'border-gray-300')} placeholder="****" maxLength="4" autoFocus />
+                            {pinError && <p className="text-red-500 text-center mb-4">Incorrect PIN — try again</p>}
+                            {!pinError && <div className="mb-4"></div>}
+                            <div className="flex gap-4">
+                                <button onClick={() => { setPin(''); setPinError(false); setScreen(pinMode === 'start' ? 'month' : 'track'); }} className="flex-1 p-4 bg-gray-300 rounded-lg font-semibold">Cancel</button>
+                                <button onClick={checkPin} className="flex-1 p-4 bg-blue-600 text-white rounded-lg font-semibold">Submit</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (screen === 'track') {
+                const timeDisplay = getTimeRemaining();
+                const config = getVenueConfig(venue);
+                return (
+                    <div className="h-screen bg-gray-900 flex flex-col p-3">
+                        <div className="flex items-center justify-between mb-1">
+                            <div className="pulse-ring flex-shrink-0 flex flex-col items-center justify-center rounded-full border-4 border-yellow-400 text-yellow-400 text-center" style={{ width: '88px', height: '88px' }}>
+                                <span style={{ fontSize: '0.65rem', lineHeight: '1.3', fontWeight: 'normal' }}>REMEMBER!</span>
+                                <span style={{ fontSize: '0.7rem', lineHeight: '1.3' }}>Just <strong>ONE</strong></span>
+                                <span style={{ fontSize: '0.7rem', lineHeight: '1.3' }}>tap!</span>
+                            </div>
+                            <div className="flex-1 flex flex-col items-center px-2">
+                                <div className="text-xs text-gray-400 mb-0.5">{formatBritishDate(date)} &middot; {venue}</div>
+                                <h1 className="text-3xl font-bold text-white text-center leading-tight">LR Buzz 321 Tracker</h1>
+                                <div className="text-lg font-semibold text-white mt-0.5">Tap <span className="uppercase font-black">ONCE</span> if you...</div>
+                            </div>
+                            <div className="flex-shrink-0 flex items-center gap-2">
+                                <div className="text-right leading-tight" style={{ maxWidth: '72px' }}>
+                                    <div className="text-xs text-gray-300">{config.host}</div>
+                                    <div className="text-xs text-gray-500">Host</div>
+                                </div>
+                                {config.photo
+                                    ? <img src={config.photo} alt={config.host} className="w-14 h-14 rounded-full object-cover object-top border-2 border-blue-400" />
+                                    : <div className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center text-white text-xl font-bold">{config.host[0]}</div>
+                                }
+                            </div>
+                        </div>
+                        <div className="flex-1 flex gap-3 relative mt-1">
+                            {emoji && <div className="emoji-pop" style={{ position: 'absolute', top: '-50px', left: emoji.color === 'blue' ? '16.66%' : emoji.color === 'red' ? '50%' : '83.33%', transform: 'translateX(-50%)', zIndex: 50 }}>{emoji.emoji}</div>}
+                            <button onTouchStart={() => handlePressStart('blue')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('blue')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('blue')} className="flex-1 rounded-lg relative" style={{ backgroundColor: '#00A19A' }}>
+                                <div className="absolute top-0 left-0 right-0 pt-4 px-3 text-center">
+                                    <span className="text-xl font-semibold text-white">...met <strong className="uppercase">THREE</strong> new people</span>
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-9xl font-bold text-white">{scores.blue}</span>
+                                </div>
+                            </button>
+                            <button onTouchStart={() => handlePressStart('red')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('red')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('red')} className="flex-1 rounded-lg relative" style={{ backgroundColor: '#D60B52' }}>
+                                <div className="absolute top-0 left-0 right-0 pt-4 px-3 text-center">
+                                    <span className="text-xl font-semibold text-white">...set <strong className="uppercase">TWO</strong> 1:1's</span>
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-9xl font-bold text-white">{scores.red}</span>
+                                </div>
+                            </button>
+                            <button onTouchStart={() => handlePressStart('green')} onTouchEnd={handlePressEnd} onMouseDown={() => handlePressStart('green')} onMouseUp={handlePressEnd} onMouseLeave={handlePressEnd} onClick={() => press('green')} className="flex-1 rounded-lg relative" style={{ backgroundColor: '#B6BD00' }}>
+                                <div className="absolute top-0 left-0 right-0 pt-4 px-3 text-center">
+                                    <span className="text-xl font-semibold text-white">...brought some<strong>ONE</strong> along</span>
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <span className="text-9xl font-bold text-white">{scores.green}</span>
+                                </div>
+                            </button>
+                        </div>
+                        <div className="text-center py-2">
+                            <div className="text-lg text-yellow-400 font-semibold">{timeDisplay}</div>
+                        </div>
+                        <div className="flex justify-between">
+                            <button onClick={() => { setPinMode('reset'); setPin(''); setPinError(false); setScreen('pin'); }} className="px-8 py-3 bg-red-700 text-white rounded-lg font-semibold">Reset</button>
+                            <button onClick={() => { setPinMode('finish'); setPin(''); setPinError(false); setScreen('pin'); }} className="px-8 py-3 bg-yellow-600 text-white rounded-lg font-semibold">Finish</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (screen === 'finish') {
+                if (submitting) return (<div className="min-h-screen bg-gray-900 flex items-center justify-center p-8"><div className="bg-white rounded-lg p-8 max-w-md w-full text-center"><div className="text-5xl mb-4">📤</div><h2 className="text-2xl font-bold mb-2">Sending to Google Sheets...</h2><p className="text-gray-500">Saved locally. Uploading now.</p></div></div>);
+                if (submitStatus === 'success') return (<div className="min-h-screen bg-gray-900 flex items-center justify-center p-8"><div className="bg-white rounded-lg p-8 max-w-md w-full text-center"><div className="text-5xl mb-4">✅</div><h2 className="text-2xl font-bold mb-2">Submitted!</h2><p className="text-gray-500">Data saved locally and sent to Google Sheets.</p></div></div>);
+                if (submitStatus === 'offline') return (<div className="min-h-screen bg-gray-900 flex items-center justify-center p-8"><div className="bg-white rounded-lg p-8 max-w-md w-full text-center"><div className="text-5xl mb-4">📵</div><h2 className="text-2xl font-bold mb-2">Saved Locally</h2><p className="text-gray-500">No connection to Google Sheets. Data is safe on this device — use CSV export to submit manually.</p></div></div>);
+                return (
+                    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8">
+                        <div className="bg-white rounded-lg p-8 max-w-md w-full">
+                            <h2 className="text-3xl font-bold mb-6">Event Complete!</h2>
+                            <div className="mb-6 p-4 bg-gray-100 rounded-lg">
+                                <div className="text-xl font-semibold mb-2">Final Scores:</div>
+                                <div>3 new met: {scores.blue}</div><div>1:1's set: {scores.red}</div><div>Brought someone: {scores.green}</div>
+                                <div className="mt-2 text-sm text-gray-600">Total buzzers interacting: {buzzerCountRef.current}</div>
+                            </div>
+                            <div className="mb-4"><label className="block font-semibold mb-2">In the Room</label><input type="number" value={inRoom} onChange={(e) => setInRoom(e.target.value)} className="w-full p-3 border-2 rounded-lg" /></div>
+                            <div className="mb-4"><label className="block font-semibold mb-2">Hosting Team (including Sponsors)</label><input type="number" value={team} onChange={(e) => setTeam(e.target.value)} className="w-full p-3 border-2 rounded-lg" /></div>
+                            <div className="mb-4"><label className="block font-semibold mb-2">Your Name</label><input type="text" value={submittedBy} onChange={(e) => setSubmittedBy(e.target.value)} className="w-full p-3 border-2 rounded-lg" placeholder="Who ran this event?" /></div>
+                            {renderNoShowFields()}
+                            <div className="mb-6"><label className="block font-semibold mb-2">Notes</label><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 rounded-lg" rows="3"></textarea></div>
+                            <div className="flex gap-4">
+                                <button onClick={() => finish(true)} className="flex-1 p-4 bg-gray-300 rounded-lg font-semibold">Later</button>
+                                <button onClick={() => finish(false)} className="flex-1 p-4 bg-green-600 text-white rounded-lg font-semibold">Save & Submit</button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (screen === 'review') {
+                const done = Object.entries(events).filter(e => e[1].done).sort((a, b) => MONTHS.indexOf(a[1].month) - MONTHS.indexOf(b[1].month));
+                return (
+                    <div className="min-h-screen bg-gray-900 p-8">
+                        <div className="max-w-6xl mx-auto">
+                            <div className="flex justify-between items-center mb-8">
+                                <button onClick={() => setScreen('venue')} className="text-white">← Back</button>
+                                <h1 className="text-4xl font-bold text-white">Historical Data</h1>
+                                <button onClick={csv} className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold">Export CSV</button>
+                            </div>
+                            <div className="bg-white rounded-lg overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-800 text-white">
+                                        <tr>
+                                            <th className="p-4 text-left">Venue</th><th className="p-4 text-left">Month</th><th className="p-4 text-left">Date</th>
+                                            <th className="p-4">3 New</th><th className="p-4">1-2-1</th><th className="p-4">Brought</th>
+                                            <th className="p-4">In Room</th><th className="p-4">Team</th>
+                                            <th className="p-4">Buzz In<br/>(10:00-10:45)</th><th className="p-4">Buzz Out<br/>(11:15-12:00)</th>
+                                            <th className="p-4">Total Buzzers<br/>Interacting<br/>(assumed)</th>
+                                            <th className="p-4">% Buzzers<br/>Engaged</th><th className="p-4">% Meeting<br/>3 New</th><th className="p-4">% Doing<br/>1-2-1s</th>
+                                            <th className="p-4 text-left">Notes</th><th className="p-4">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {done.map(([k, ev]) => {
+                                            const room = parseInt(ev.inRoom) || 0, buzzers = ev.buzzerCount || 0;
+                                            const pctE = room > 0 ? Math.round((buzzers / room) * 100) : 0;
+                                            const pct3 = room > 0 ? Math.round((ev.scores.blue / room) * 100) : 0;
+                                            const pct2 = room > 0 ? Math.round((ev.scores.red / room) * 100) : 0;
+                                            return (
+                                                <tr key={k} className="border-b">
+                                                    <td className="p-4">{ev.venue}</td><td className="p-4">{ev.month}</td><td className="p-4">{ev.date}</td>
+                                                    <td className="p-4 text-center font-semibold" style={{ color: '#00A19A' }}>{ev.scores.blue}</td>
+                                                    <td className="p-4 text-center font-semibold" style={{ color: '#D60B52' }}>{ev.scores.red}</td>
+                                                    <td className="p-4 text-center font-semibold" style={{ color: '#B6BD00' }}>{ev.scores.green}</td>
+                                                    <td className="p-4 text-center">{ev.inRoom || '-'}</td><td className="p-4 text-center">{ev.team || '-'}</td>
+                                                    <td className="p-4 text-center">{ev.buzzInCount || 0}</td><td className="p-4 text-center">{ev.buzzOutCount || 0}</td>
+                                                    <td className="p-4 text-center">{buzzers}</td><td className="p-4 text-center">{pctE}%</td>
+                                                    <td className="p-4 text-center">{pct3}%</td><td className="p-4 text-center">{pct2}%</td>
+                                                    <td className="p-4 text-sm">{ev.notes || '-'}</td>
+                                                    <td className="p-4 text-center"><button onClick={() => editEv(k)} className="px-4 py-2 bg-blue-600 text-white rounded text-sm">Edit</button></td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {done.length === 0 && <div className="text-center text-white text-xl mt-12">No events yet!</div>}
+                            {edit && (
+                                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                                    <div className="bg-white rounded-lg p-8 max-w-md w-full max-h-screen overflow-y-auto">
+                                        <h3 className="text-2xl font-bold mb-4">Edit Event</h3>
+                                        {!editScores ? (
+                                            <>
+                                                <div className="mb-4"><label className="block font-semibold mb-2">In the Room</label><input type="number" value={inRoom} onChange={(e) => setInRoom(e.target.value)} className="w-full p-3 border-2 rounded-lg" /></div>
+                                                <div className="mb-4"><label className="block font-semibold mb-2">Hosting Team (including Sponsors)</label><input type="number" value={team} onChange={(e) => setTeam(e.target.value)} className="w-full p-3 border-2 rounded-lg" /></div>
+                                                {renderNoShowFields()}
+                                                <div className="mb-4"><label className="block font-semibold mb-2">Notes</label><textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full p-3 border-2 rounded-lg" rows="3"></textarea></div>
+                                                <button onClick={() => setEditScores(true)} className="w-full p-3 mb-4 bg-yellow-600 text-white rounded-lg font-semibold">Edit 321 Scores</button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="mb-4"><label className="block font-semibold mb-2" style={{ color: '#00A19A' }}>3 New Met</label><input type="number" value={scores.blue} onChange={(e) => setScores({...scores, blue: parseInt(e.target.value) || 0})} className="w-full p-3 border-2 rounded-lg text-2xl" style={{ borderColor: '#00A19A' }} /></div>
+                                                <div className="mb-4"><label className="block font-semibold mb-2" style={{ color: '#D60B52' }}>1:1's Set</label><input type="number" value={scores.red} onChange={(e) => setScores({...scores, red: parseInt(e.target.value) || 0})} className="w-full p-3 border-2 rounded-lg text-2xl" style={{ borderColor: '#D60B52' }} /></div>
+                                                <div className="mb-4"><label className="block font-semibold mb-2" style={{ color: '#B6BD00' }}>Brought Someone Along</label><input type="number" value={scores.green} onChange={(e) => setScores({...scores, green: parseInt(e.target.value) || 0})} className="w-full p-3 border-2 rounded-lg text-2xl" style={{ borderColor: '#B6BD00' }} /></div>
+                                                <button onClick={() => setEditScores(false)} className="w-full p-3 mb-4 bg-gray-600 text-white rounded-lg font-semibold">Back to Host Fields</button>
+                                            </>
+                                        )}
+                                        <div className="flex gap-4">
+                                            <button onClick={() => { setEdit(null); setEditScores(false); setInRoom(''); setTeam(''); setNotes(''); setNoShows([{ name: '', reason: '' }]); }} className="flex-1 p-3 bg-gray-300 rounded-lg font-semibold">Cancel</button>
+                                            <button onClick={saveEdit} className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-semibold">Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+    <script>
+        // --- PWA service worker: network-first, auto-updates on next use ---
+        (function () {
+            var swReg = null;
+            if ('serviceWorker' in navigator) {
+                var hadController = !!navigator.serviceWorker.controller;
+                var refreshing = false;
+                navigator.serviceWorker.addEventListener('controllerchange', function () {
+                    if (refreshing) return;
+                    if (!hadController) { hadController = true; return; } // first install: no reload
+                    refreshing = true;
+                    window.location.reload();
+                });
+                window.addEventListener('load', function () {
+                    navigator.serviceWorker.register('sw.js').then(function (r) { swReg = r; }).catch(function () {});
+                });
+            }
+            // Called by the in-app "Check for updates" button
+            window.checkForAppUpdate = async function () {
+                if (!('serviceWorker' in navigator)) return 'unsupported';
+                var r = swReg || await navigator.serviceWorker.getRegistration();
+                if (!r) { window.location.reload(); return 'reloading'; }
+                await r.update();
+                if (r.waiting) { r.waiting.postMessage({ type: 'SKIP_WAITING' }); return 'updating'; }
+                return 'latest';
+            };
+        })();
+    </script>
+</body>
+</html>
