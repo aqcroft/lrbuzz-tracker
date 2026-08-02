@@ -12,6 +12,19 @@
     <meta name="apple-mobile-web-app-title" content="321 Tracker">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" type="image/png" href="icon-192.png">
+    <script>
+        // Capture Chrome's install event early (it can fire before React mounts)
+        window.__bipEvent = null;
+        window.addEventListener('beforeinstallprompt', function (e) {
+            e.preventDefault();
+            window.__bipEvent = e;
+            window.dispatchEvent(new Event('bip-ready'));
+        });
+        window.addEventListener('appinstalled', function () {
+            window.__bipEvent = null;
+            window.dispatchEvent(new Event('app-installed'));
+        });
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -75,6 +88,8 @@
             const [submittedBy, setSubmittedBy] = useState('');
             const [warn, setWarn] = useState(null);
             const [updateState, setUpdateState] = useState('');
+            const [canInstall, setCanInstall] = useState(false);
+            const [showIosHint, setShowIosHint] = useState(false);
             const [edit, setEdit] = useState(null);
             const [editScores, setEditScores] = useState(false);
             const [lastPressAttempt, setLastPressAttempt] = useState({ blue: 0, red: 0, green: 0 });
@@ -91,7 +106,36 @@
 
             useEffect(() => {
                 try { const data = localStorage.getItem('lrbuzz'); if (data) setEvents(JSON.parse(data)); } catch (e) {}
+
+                // Already installed / launched from home-screen icon: show nothing
+                const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+                if (standalone) return;
+
+                // Android / desktop: show the Install button when Chrome offers it
+                if (window.__bipEvent) setCanInstall(true);
+                const onReady = () => setCanInstall(true);
+                const onInstalled = () => setCanInstall(false);
+                window.addEventListener('bip-ready', onReady);
+                window.addEventListener('app-installed', onInstalled);
+
+                // iOS Safari has no install API: show a manual hint instead
+                const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                if (ios) setShowIosHint(true);
+
+                return () => {
+                    window.removeEventListener('bip-ready', onReady);
+                    window.removeEventListener('app-installed', onInstalled);
+                };
             }, []);
+
+            const promptInstall = async () => {
+                const e = window.__bipEvent;
+                if (!e) return;
+                e.prompt();
+                try { await e.userChoice; } catch (err) {}
+                window.__bipEvent = null;
+                setCanInstall(false);
+            };
 
             const save = (e) => { try { localStorage.setItem('lrbuzz', JSON.stringify(e)); setEvents(e); } catch (err) {} };
             const key = (v, m) => v + '-' + m;
@@ -333,6 +377,18 @@
                     <div className="max-w-4xl mx-auto">
                         <h1 className="text-4xl font-bold text-white mb-2 text-center">LR Buzz 321 Tracker</h1>
                         <p className="text-gray-400 text-center mb-4">Select your venue to begin</p>
+                        {canInstall && (
+                            <div className="mb-4 mx-auto max-w-md">
+                                <button onClick={promptInstall} type="button" className="w-full p-4 bg-blue-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 shadow-lg hover:bg-blue-700">
+                                    <span>⬇️</span> Install this app on your device
+                                </button>
+                            </div>
+                        )}
+                        {showIosHint && (
+                            <div className="mb-4 mx-auto max-w-md bg-gray-800 border border-blue-400/40 text-blue-200 rounded-lg px-4 py-3 text-sm text-center">
+                                📲 To install on iPhone: open this page in <strong>Safari</strong>, tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.
+                            </div>
+                        )}
                         <div className="flex items-center justify-center gap-2 mb-8 mx-auto max-w-md bg-gray-800 border border-yellow-500/40 text-yellow-300 rounded-lg px-4 py-2 text-sm text-center">
                             <span>🔊</span><span>Turn your volume up so you hear each tap.</span>
                         </div>
