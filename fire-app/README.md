@@ -29,11 +29,11 @@ The tracker stores its event state in `localStorage` under the key `lrbuzz`.
 
 A GitHub Actions workflow in this repository builds a debug APK automatically when Fire-app files change. It uploads the APK as a workflow artifact and publishes or updates a GitHub Release asset named:
 
-`Buzz-321-Fire-v1.apk`
+`Buzz-321-Fire-v2.apk`
 
 Release tag:
 
-`buzz-321-fire-v1`
+`buzz-321-fire-v2`
 
 The Android project can also be opened in Android Studio and built with **Build > Build App Bundle(s) / APK(s) > Build APK(s)**.
 
