@@ -25,9 +25,15 @@ The tracker stores its event state in `localStorage` under the key `lrbuzz`.
 - Clearing the app's storage or uninstalling the app removes that WebView localStorage.
 - Google Sheets submissions are remote and are unaffected by the change of browser/storage context.
 
-## Build
+## Build and download
 
-A GitHub Actions workflow in this repository builds a debug APK automatically when Fire-app files change.
+A GitHub Actions workflow in this repository builds a debug APK automatically when Fire-app files change. It uploads the APK as a workflow artifact and publishes or updates a GitHub Release asset named:
+
+`Buzz-321-Fire-v1.apk`
+
+Release tag:
+
+`buzz-321-fire-v1`
 
 The Android project can also be opened in Android Studio and built with **Build > Build App Bundle(s) / APK(s) > Build APK(s)**.
 
@@ -39,4 +45,11 @@ For native-shell changes, increase `versionCode` and preferably `versionName` in
 
 ## Launcher icon
 
-This source currently contains a simple Buzz-colour fallback launcher icon. The exact existing PNG can be substituted later without changing the tracker itself.
+This source uses the existing repository `icon-512.png` as the Android launcher icon.
+
+## Known WebView differences to watch
+
+- Service workers are supported on the Fire HD 8 generation WebView, but their lifecycle is controlled by Android WebView rather than Silk.
+- Vibration requires device support and the Android `VIBRATE` permission, which this wrapper declares.
+- CSV export uses an in-page Blob download. Some Android WebView builds do not handle Blob downloads like a full browser.
+- The existing update-checking UI still comes from the hosted tracker and its service worker; native app updates are separate APK installs.

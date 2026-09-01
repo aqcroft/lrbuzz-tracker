@@ -7,6 +7,9 @@ on:
       - 'fire-app/**'
       - '.github/workflows/build-fire-apk.yml'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,6 +29,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Cache Android debug signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: buzz-321-fire-debug-keystore-v1
+
       - name: Build debug APK
         working-directory: fire-app
         run: gradle assembleDebug
@@ -33,9 +42,54 @@ jobs:
       - name: Rename APK
         run: cp fire-app/app/build/outputs/apk/debug/app-debug.apk Buzz-321-Fire-v1.apk
 
+      - name: Verify APK manifest
+        run: |
+          set -euo pipefail
+          APK="Buzz-321-Fire-v1.apk"
+          APKANALYZER="$(find "$ANDROID_HOME" -name apkanalyzer -type f | head -n 1)"
+          test -n "$APKANALYZER"
+          APP_ID="$("$APKANALYZER" manifest application-id "$APK")"
+          MIN_SDK="$("$APKANALYZER" manifest min-sdk "$APK")"
+          TARGET_SDK="$("$APKANALYZER" manifest target-sdk "$APK")"
+          PERMISSIONS="$("$APKANALYZER" manifest permissions "$APK")"
+
+          test "$APP_ID" = "com.aqcroft.buzz321fire"
+          test "$MIN_SDK" = "23"
+          test "$TARGET_SDK" = "28"
+          echo "$PERMISSIONS" | grep -q "android.permission.INTERNET"
+
+          {
+            echo "Application ID: $APP_ID"
+            echo "Minimum SDK: $MIN_SDK"
+            echo "Target SDK: $TARGET_SDK"
+            echo "Permissions:"
+            echo "$PERMISSIONS"
+          } > fire-app-apk-verification.txt
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Buzz-321-Fire-v1
           path: Buzz-321-Fire-v1.apk
           if-no-files-found: error
+
+      - name: Upload verification report
+        uses: actions/upload-artifact@v4
+        with:
+          name: Buzz-321-Fire-v1-verification
+          path: fire-app-apk-verification.txt
+          if-no-files-found: error
+
+      - name: Publish GitHub Release APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view buzz-321-fire-v1 >/dev/null 2>&1; then
+            gh release upload buzz-321-fire-v1 Buzz-321-Fire-v1.apk fire-app-apk-verification.txt --clobber
+          else
+            gh release create buzz-321-fire-v1 Buzz-321-Fire-v1.apk fire-app-apk-verification.txt \
+              --target "$GITHUB_SHA" \
+              --title "Buzz 321 Fire v1" \
+              --notes "Installable Amazon Fire WebView wrapper for Buzz 321 Tracker v1. Loads https://aqcroft.github.io/lrbuzz-tracker/ fullscreen without Silk browser controls."
+          fi
