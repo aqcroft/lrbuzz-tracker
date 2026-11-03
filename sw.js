@@ -3,7 +3,7 @@
 // always get the latest version when online. Cache is only a fallback.
 // Bump CACHE when you ship changes so old caches are cleared on next open.
 
-const CACHE = 'lrbuzz-v2026.08';
+const CACHE = 'lrbuzz-v2026.09';
 
 const CORE = [
   './',
